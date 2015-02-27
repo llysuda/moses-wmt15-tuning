@@ -835,7 +835,7 @@ void ChartManager::OutputReachableHypo(OutputCollector *collector, size_t transl
   FixPrecision(out);
 
   size_t size = m_source.GetSize();
-  if (size == 0) // empty source
+  if (size == 0 || size < 5) // empty source
       return;
 
   for(size_t width = 5; width <= size; width++) {
