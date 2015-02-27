@@ -66,6 +66,7 @@ int main(int argc, char** argv)
   vector<string> featureFiles;
   vector<string> referenceFiles; //for hg mira
   string hgDir;
+  string hgDirRef;
   int seed;
   string outputFile;
   float c = 0.01;      // Step-size cap C
@@ -89,6 +90,7 @@ int main(int argc, char** argv)
   ("scfile,S", po::value<vector<string> >(&scoreFiles), "Scorer data files")
   ("ffile,F", po::value<vector<string> > (&featureFiles), "Feature data files")
   ("hgdir,H", po::value<string> (&hgDir), "Directory containing hypergraphs")
+  ("hgdirref", po::value<string> (&hgDirRef), "Directory containing hypergraphs")
   ("reference,R", po::value<vector<string> > (&referenceFiles), "Reference files, only required for hypergraph mira")
   ("random-seed,r", po::value<int>(&seed), "Seed for random number generation")
   ("output-file,o", po::value<string>(&outputFile), "Output file")
@@ -234,6 +236,8 @@ int main(int argc, char** argv)
     decoder.reset(new NbestPerceptronDecoder(featureFiles, scoreFiles, streaming, no_shuffle, safe_hope, scorer.get()));
   } else if (type == "hypergraph") {
     decoder.reset(new HypergraphPerceptronDecoder(hgDir, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
+  } else if (type == "maxvio") {
+    decoder.reset(new MaxvioPerceptronDecoder(hgDir, hgDirRef, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
   } else {
     UTIL_THROW(util::Exception, "Unknown batch mira type: '" << type << "'");
   }

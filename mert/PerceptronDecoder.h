@@ -160,6 +160,49 @@ private:
   Vocab vocab_;
 };
 
+/** Gets hope-fear from hypergraphs */
+class MaxvioPerceptronDecoder : public virtual PerceptronDecoder
+{
+public:
+  MaxvioPerceptronDecoder(
+    const std::string& hypergraphDir,
+    const std::string& hypergraphDirRef,
+    const std::vector<std::string>& referenceFiles,
+    size_t num_dense,
+    bool streaming,
+    bool no_shuffle,
+    bool safe_hope,
+    size_t hg_pruning,
+    const MiraWeightVector& wv,
+    Scorer* scorer_
+  );
+
+  virtual void reset();
+  virtual void next();
+  virtual bool finished();
+
+  virtual void Perceptron(
+    const std::vector<ValType>& backgroundBleu,
+    const MiraWeightVector& wv,
+    PerceptronData* Perceptron
+  );
+
+  virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
+  void ReadAGraph(size_t sentenceId, const std::string& hypergraphDir, Graph* graph);
+
+private:
+  size_t num_dense_;
+  //maps sentence Id to graph ptr
+  //typedef std::map<size_t, boost::shared_ptr<Graph> > GraphColl;
+  //GraphColl graphs_;
+  std::vector<size_t> sentenceIds_;
+  std::vector<size_t>::const_iterator sentenceIdIter_;
+  ReferenceSet references_;
+  Vocab vocab_;
+  std::string hypergraphDirHyp;
+  std::string hypergraphDirRef;
+};
+
 };
 
 #endif

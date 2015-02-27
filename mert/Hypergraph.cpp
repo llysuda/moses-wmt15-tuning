@@ -307,6 +307,11 @@ void ReadGraph(util::FilePiece &from, Graph &graph)
   for (size_t i = 0; i < vertices; ++i) {
     line = NextLine(from);
     unsigned long int edge_count = boost::lexical_cast<unsigned long int>(line);
+    line = NextLine(from);
+    unsigned long int start = boost::lexical_cast<unsigned long int>(line);
+    line = NextLine(from);
+    unsigned long int end = boost::lexical_cast<unsigned long int>(line);
+
     Vertex* vertex = graph.NewVertex();
     for (unsigned long int e = 0; e < edge_count; ++e) {
       pair<Edge*,size_t> edge = ReadEdge(from, graph);
@@ -315,6 +320,8 @@ void ReadGraph(util::FilePiece &from, Graph &graph)
       //of the vertex.
       if (!e) {
         vertex->SetSourceCovered(edge.second);
+        vertex->startPos = start;
+        vertex->endPos = end;
       }
     }
   }

@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "Scorer.h"
 #include "PerceptronDecoder.h"
+#include "PerceptronForestRescore.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -370,6 +371,211 @@ void HypergraphPerceptronDecoder::MaxModel(const AvgWeightVector& wv, vector<Val
   }
 }
 
+// maxvio
 
+MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
+(
+  const string& hypergraphDir,
+  const string& hypergraphDirRef,
+  const vector<string>& referenceFiles,
+  size_t num_dense,
+  bool streaming,
+  bool no_shuffle,
+  bool safe_hope,
+  size_t hg_pruning,
+  const MiraWeightVector& wv,
+  Scorer* scorer
+) :
+  num_dense_(num_dense),
+  hypergraphDirHyp (hypergraphDir),
+  hypergraphDirRef (hypergraphDirRef)
+{
+
+  UTIL_THROW_IF(streaming, util::Exception, "Streaming not currently supported for maxvio");
+  UTIL_THROW_IF(!fs::exists(hypergraphDir), HypergraphException, "Directory '" << hypergraphDir << "' does not exist");
+  UTIL_THROW_IF(!fs::exists(hypergraphDirRef), HypergraphException, "Directory '" << hypergraphDirRef << "' does not exist");
+  UTIL_THROW_IF(!referenceFiles.size(), util::Exception, "No reference files supplied");
+  references_.Load(referenceFiles, vocab_);
+
+  SparseVector weights;
+  wv.ToSparse(&weights);
+  scorer_ = scorer;
+
+  static const string kWeights = "weights";
+  fs::directory_iterator dend;
+  size_t fileCount = 0;
+
+  cerr << "counting  hypergraphs" << endl;
+  for (fs::directory_iterator di(hypergraphDir); di != dend; ++di) {
+    const fs::path& hgpath = di->path();
+    if (hgpath.filename() == kWeights) continue;
+    ++fileCount;
+  }
+  cerr << endl << "Done" << endl;
+
+  sentenceIds_.resize(fileCount);
+  for (size_t i = 0; i < fileCount; ++i) sentenceIds_[i] = i;
+  if (!no_shuffle) {
+    random_shuffle(sentenceIds_.begin(), sentenceIds_.end());
+  }
+
+}
+
+void MaxvioPerceptronDecoder::reset()
+{
+  sentenceIdIter_ = sentenceIds_.begin();
+}
+
+void MaxvioPerceptronDecoder::next()
+{
+  sentenceIdIter_++;
+}
+
+bool MaxvioPerceptronDecoder::finished()
+{
+  return sentenceIdIter_ == sentenceIds_.end();
+}
+
+void MaxvioPerceptronDecoder::ReadAGraph(size_t sentenceId, const string& hypergraphDir, Graph* graph) {
+  // read hypergraph of hypoes.
+  fs::directory_iterator di(hypergraphDir);
+  //di = di + sentenceId;
+  for (size_t i = 0; i < sentenceId; i++)
+    ++di;
+  const fs::path& hgpath = di->path();
+  //Graph graph(vocab_);
+  size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
+  util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
+  util::FilePiece file(fd.release());
+  ReadGraph(file,*graph);
+  //return &graph;
+}
+
+void MaxvioPerceptronDecoder::Perceptron(
+  const vector<ValType>& backgroundBleu,
+  const MiraWeightVector& wv,
+  PerceptronData* Perceptron
+)
+{
+  size_t sentenceId = *sentenceIdIter_;
+  SparseVector weights;
+  wv.ToSparse(&weights);
+
+  Graph graphHyp(vocab_);
+  ReadAGraph(sentenceId, hypergraphDirHyp, &graphHyp);
+  Graph graphRef(vocab_);
+  ReadAGraph(sentenceId, hypergraphDirRef, &graphRef);
+
+  ValType hope_scale = 1.0;
+  vector<vector<HgHypothesis*> > hypVio;
+  vector<vector<HgHypothesis*> > refVio;
+  for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
+
+    //Model decode
+    Viterbi(graphHyp, weights, 0, references_, sentenceId, backgroundBleu, hypVio);
+    Viterbi(graphRef, weights, 0, references_, sentenceId, backgroundBleu, refVio);
+
+    break;
+  }
+
+  // find the max vio
+  size_t besti = 0;
+  size_t bestj = 0;
+  float maxvio = 0.0;
+
+  size_t size = hypVio.size();
+  for(size_t width = 5; width <= size; width++) {
+    for (size_t i = 0; i < size-width + 1; i++) {
+      size_t j = i + width -1;
+
+      float scoreHyp = hypVio[i][j-i]->featureVector.inner_product(weights);
+      float scoreRef = refVio[i][j-i]->featureVector.inner_product(weights);
+
+      if (scoreRef < scoreHyp && scoreHyp-scoreRef > maxvio) {
+        besti = i;
+        bestj = j;
+        maxvio = scoreHyp-scoreRef;
+      }
+
+    }
+  }
+
+  if (besti == 0 & bestj == 0) {
+    Perceptron->hopeModelEqual = true;
+    return;
+  }
+  //modelFeatures, hopeFeatures and fearFeatures
+  Perceptron->modelFeatures = MiraFeatureVector(hypVio[besti][bestj-besti]->featureVector, num_dense_);
+  Perceptron->hopeFeatures = MiraFeatureVector(refVio[besti][bestj-besti]->featureVector, num_dense_);
+  Perceptron->hopeModelEqual = false;
+
+  Perceptron->hopeBleu = 1.0;
+  Perceptron->modelBleu = 0.0;
+  //Perceptron->fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
+
+  //Need to know which are to be mapped to dense features!
+
+  //Only C++11
+  //Perceptron->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
+  /*vector<ValType> fearStats(scorer_->NumberOfScores());
+  Perceptron->hopeStats.reserve(scorer_->NumberOfScores());
+  Perceptron->modelStats.reserve(scorer_->NumberOfScores());
+  for (size_t i = 0; i < fearStats.size(); ++i) {
+    Perceptron->modelStats.push_back(modelHypo.bleuStats[i]);
+    Perceptron->hopeStats.push_back(hopeHypo.bleuStats[i]);
+
+    fearStats[i] = fearHypo.bleuStats[i];
+  }
+
+  Perceptron->hopeBleu = sentenceLevelBackgroundBleu(Perceptron->hopeStats, backgroundBleu);
+  Perceptron->fearBleu = sentenceLevelBackgroundBleu(fearStats, backgroundBleu);
+  Perceptron->modelBleu = sentenceLevelBackgroundBleu(Perceptron->modelStats, backgroundBleu);
+
+  //If fv and bleu stats are equal, then assume equal
+  Perceptron->PerceptronEqual = true; //(Perceptron->hopeBleu - Perceptron->fearBleu) >= 1e-8;
+  if (Perceptron->PerceptronEqual) {
+    for (size_t i = 0; i < fearStats.size(); ++i) {
+      if (fearStats[i] != Perceptron->hopeStats[i]) {
+        Perceptron->PerceptronEqual = false;
+        break;
+      }
+    }
+  }
+  Perceptron->PerceptronEqual = Perceptron->PerceptronEqual && (Perceptron->fearFeatures == Perceptron->hopeFeatures);
+
+  //If fv and bleu stats are equal, then assume equal
+  Perceptron->hopeModelEqual = true; //(Perceptron->hopeBleu - Perceptron->fearBleu) >= 1e-8;
+  if (Perceptron->hopeModelEqual) {
+    for (size_t i = 0; i < Perceptron->modelStats.size(); ++i) {
+      if (Perceptron->modelStats[i] != Perceptron->hopeStats[i]) {
+        Perceptron->hopeModelEqual = false;
+        break;
+      }
+    }
+  }
+  Perceptron->hopeModelEqual = Perceptron->hopeModelEqual && (Perceptron->modelFeatures == Perceptron->hopeFeatures);*/
+}
+
+void MaxvioPerceptronDecoder::MaxModel(const AvgWeightVector& wv, vector<ValType>* stats)
+{
+  assert(!finished());
+  HgHypothesis bestHypo;
+  size_t sentenceId = *sentenceIdIter_;
+  SparseVector weights;
+  wv.ToSparse(&weights);
+  vector<ValType> bg(scorer_->NumberOfScores());
+  //cerr << "Calculating bleu on " << sentenceId << endl;
+  //Viterbi(*(graphs_[sentenceId]), weights, 0, references_, sentenceId, bg, &bestHypo);
+  stats->resize(bestHypo.bleuStats.size());
+  /*
+  for (size_t i = 0; i < bestHypo.text.size(); ++i) {
+    cerr << bestHypo.text[i]->first << " ";
+  }
+  cerr << endl;
+  */
+  for (size_t i = 0; i < bestHypo.bleuStats.size(); ++i) {
+    (*stats)[i] = bestHypo.bleuStats[i];
+  }
+}
 
 };
