@@ -234,6 +234,8 @@ protected:
 
   const StatefulFeatureFunction* m_treeStructure;
 
+  bool reachableSpanPair;
+
   // number of nonterminal labels
 //   size_t m_nonTerminalSize;
 
@@ -796,6 +798,10 @@ public:
 
   bool RequireSortingAfterSourceContext() const {
     return m_requireSortingAfterSourceContext;
+  }
+
+  bool GetReachableSpanPair() const {
+    return reachableSpanPair;
   }
 
 };

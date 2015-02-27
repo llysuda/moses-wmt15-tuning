@@ -101,6 +101,7 @@ private:
     long translationId) const;
   void OutputBestHypo(OutputCollector *collector, const ChartHypothesis *hypo, long translationId) const;
   void Backtrack(const ChartHypothesis *hypo) const;
+  void OutputReachableHypo(OutputCollector *collector, size_t translationId) const;
 
 public:
   ChartManager(InputType const& source);

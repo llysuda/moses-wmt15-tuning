@@ -304,11 +304,18 @@ void ChartManager::OutputSearchGraphMoses(std::ostream &outputSearchGraphStream)
 
 void ChartManager::OutputBest(OutputCollector *collector) const
 {
+
   const ChartHypothesis *bestHypo = GetBestHypothesis();
   if (collector && bestHypo) {
     const size_t translationId = m_source.GetTranslationId();
     const ChartHypothesis *bestHypo = GetBestHypothesis();
     OutputBestHypo(collector, bestHypo, translationId);
+  }
+
+  if (collector && !bestHypo && StaticData::Instance().GetReachableSpanPair()) {
+    const size_t translationId = m_source.GetTranslationId();
+    OutputReachableHypo(collector, translationId);
+    return;
   }
 }
 
@@ -818,6 +825,85 @@ void ChartManager::OutputSearchGraphHypergraph() const
     HypergraphOutput<ChartManager> hypergraphOutputChart(PRECISION);
     hypergraphOutputChart.Write(*this);
   }
+}
+
+void ChartManager::OutputReachableHypo(OutputCollector *collector, size_t translationId) const
+{
+  if (!collector)
+    return;
+  std::ostringstream out;
+  FixPrecision(out);
+
+  size_t size = m_source.GetSize();
+  if (size == 0) // empty source
+      return;
+
+  for(size_t width = 5; width <= size; width++) {
+    for(size_t start = 0; start < size-width+1; start++) {
+      size_t end = start + width - 1;
+      WordsRange range(start, end);
+      const ChartCell &lastCell = m_hypoStackColl.Get(range);
+      const ChartHypothesis* hypo = lastCell.GetBestHypothesis();
+
+      if (hypo != NULL) {
+        VERBOSE(1,"BEST TRANSLATION: " << *hypo << endl);
+        VERBOSE(3,"Best path: ");
+        Backtrack(hypo);
+        VERBOSE(3,"0" << std::endl);
+
+        if (StaticData::Instance().GetOutputHypoScore()) {
+          out << hypo->GetTotalScore() << " ";
+        }
+
+        if (StaticData::Instance().IsPathRecoveryEnabled()) {
+          out << "||| ";
+        }
+
+        // target phrase
+        Phrase outPhrase(ARRAY_SIZE_INCR);
+        hypo->GetOutputPhrase(outPhrase);
+
+        // delete 1st & last
+        UTIL_THROW_IF2(outPhrase.GetSize() < 2,
+                       "Output phrase should have contained at least 2 words (beginning and end-of-sentence)");
+
+        // source phrase
+        Phrase srcPhrase = m_source.GetSubString(range);
+
+        // delete 1st & last
+        //UTIL_THROW_IF2(srcPhrase.GetSize() < 2,
+        //               "Output phrase should have contained at least 2 words (beginning and end-of-sentence)");
+
+        if (start == 0)
+          srcPhrase.RemoveWord(0);
+        if (end == size - 1)
+          srcPhrase.RemoveWord(srcPhrase.GetSize() - 1);
+
+        const std::vector<FactorType> inputFactorOrder = StaticData::Instance().GetInputFactorOrder();
+        string srcoutput = srcPhrase.GetStringRep(inputFactorOrder);
+        out << srcoutput << " ||| ";
+
+        if (start == 0)
+          outPhrase.RemoveWord(0);
+        if (end == size - 1)
+          outPhrase.RemoveWord(outPhrase.GetSize() - 1);
+
+        const std::vector<FactorType> outputFactorOrder = StaticData::Instance().GetOutputFactorOrder();
+        string output = outPhrase.GetStringRep(outputFactorOrder);
+        out << output << endl;
+      } else {
+        //VERBOSE(1, "NO BEST TRANSLATION" << endl);
+
+        //if (StaticData::Instance().GetOutputHypoScore()) {
+        //  out << "0 ";
+        //}
+
+        //out << endl;
+      }
+    }
+  }
+
+  collector->Write(translationId, out.str());
 }
 
 void ChartManager::OutputBestHypo(OutputCollector *collector, const ChartHypothesis *hypo, long translationId) const
