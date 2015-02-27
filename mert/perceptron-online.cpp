@@ -49,17 +49,40 @@ de recherches du Canada
 #include "Scorer.h"
 #include "ScorerFactory.h"
 
+#include "moses/IOWrapper.h"
+#include "moses/Hypothesis.h"
+#include "moses/Manager.h"
+#include "moses/StaticData.h"
+#include "moses/TypeDef.h"
+#include "moses/Util.h"
+#include "moses/Timer.h"
+#include "moses/TranslationModel/PhraseDictionary.h"
+#include "moses/FF/StatefulFeatureFunction.h"
+#include "moses/FF/StatelessFeatureFunction.h"
+#include "moses/TranslationTask.h"
+
 using namespace std;
 using namespace MosesTuning;
+using namespace Moses;
 
 namespace po = boost::program_options;
+
+char**convert(const vector<std::string> & svec)
+{
+  char ** arr = new char*[svec.size()];
+  for (size_t i = 0; i < svec.size(); i++) {
+    arr[i] = new char[svec[i].size() + 1];
+    std::strcpy(arr[i], svec[i].c_str());
+  }
+   return arr;
+}
 
 int main(int argc, char** argv)
 {
   bool help;
   string denseInitFile;
   string sparseInitFile;
-  string type = "nbest";
+  string type = "maxvio";
   string sctype = "BLEU";
   string scconfig = "";
   vector<string> scoreFiles;
@@ -74,17 +97,21 @@ int main(int argc, char** argv)
   int n_iters = 1;    // Max epochs J
   bool streaming = false; // Stream all k-best lists?
   bool streaming_out = false; // Stream output after each sentence?
-  bool no_shuffle = false; // Don't shuffle, even for in memory version
+  bool no_shuffle = true; // Don't shuffle, even for in memory version
   bool model_bg = false; // Use model for background corpus
   bool verbose = false; // Verbose updates
   bool safe_hope = false; // Model score cannot have more than BLEU_RATIO times more influence than BLEU
   size_t hgPruning = 50; //prune hypergraphs to have this many edges per reference word
 
+  string mosesargs;
+  string inputFile;
+  string decoderCmd = "";
+
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
   desc.add_options()
   ("help,h", po::value(&help)->zero_tokens()->default_value(false), "Print this help message and exit")
-  ("type,t", po::value<string>(&type), "Either nbest or hypergraph")
+  ("type,t", po::value<string>(&type), "maxvio")
   ("sctype", po::value<string>(&sctype), "the scorer type (default BLEU)")
   ("scconfig,c", po::value<string>(&scconfig), "configuration string passed to scorer")
   ("scfile,S", po::value<vector<string> >(&scoreFiles), "Scorer data files")
@@ -101,11 +128,13 @@ int main(int argc, char** argv)
   ("sparse-init,s", po::value<string>(&sparseInitFile), "Weight file for sparse features")
   ("streaming", po::value(&streaming)->zero_tokens()->default_value(false), "Stream n-best lists to save memory, implies --no-shuffle")
   ("streaming-out", po::value(&streaming_out)->zero_tokens()->default_value(false), "Stream weights to stdout after each sentence")
-  ("no-shuffle", po::value(&no_shuffle)->zero_tokens()->default_value(false), "Don't shuffle hypotheses before each epoch")
   ("model-bg", po::value(&model_bg)->zero_tokens()->default_value(false), "Use model instead of hope for BLEU background")
   ("verbose", po::value(&verbose)->zero_tokens()->default_value(false), "Verbose updates")
   ("safe-hope", po::value(&safe_hope)->zero_tokens()->default_value(false), "Mode score's influence on hope decoding is limited")
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
+  ("mosesargs", po::value<string>(&mosesargs), "decoder args")
+  ("input", po::value<string>(&inputFile), "input file")
+  ("decoder", po::value<string>(&decoderCmd), "input file")
   ;
 
   po::options_description cmdline_options;
@@ -219,7 +248,7 @@ int main(int argc, char** argv)
   }
 
   MiraWeightVector wv(initParams);
-  MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
+  //MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
 
   // Initialize scorer
   if(sctype != "BLEU" && type == "hypergraph") {
@@ -243,17 +272,58 @@ int main(int argc, char** argv)
   }
 
   // Training loop
-  if (!streaming_out)
-    cerr << "Initial BLEU = " << decoder->Evaluate(wv.avg()) << endl;
+  //if (!streaming_out)
+  //  cerr << "Initial BLEU = " << decoder->Evaluate(wv.avg()) << endl;
   ValType bestBleu = 0;
   int totalCount = 1;
-  for(int j=0; j<n_iters; j++) {
+ // for(int j=0; j<n_iters; j++) {
+
+    ////
+    ////   init moses for online decoding
+    ////
+
+    vector<string> vecargs = Moses::Tokenize(mosesargs);
+    vecargs.insert(vecargs.begin(),"executable");
+    char** argv2 = convert(vecargs);
+    Parameter params;
+    if (!params.LoadParam(int(vecargs.size()), (char**) argv2)) {
+      exit(1);
+    }
+    //
+
+    if (!StaticData::LoadDataStatic(&params, argv[0])) {
+      exit(1);
+    }
+    const StaticData& staticData = StaticData::Instance();
+
+
+    IOWrapper* ioWrapper = new IOWrapper();
+    if (ioWrapper == NULL) {
+      cerr << "Error; Failed to create IO object" << endl;
+      exit(1);
+    }
+
+    InputType* source = NULL;
+    size_t lineCount = staticData.GetStartTranslationId();
+
     // MIRA train for one epoch
     int iNumExamples = 0;
     int iNumUpdates = 0;
     ValType totalLoss = 0.0;
     size_t sentenceIndex = 0;
     for(decoder->reset(); !decoder->finished(); decoder->next()) {
+
+      // decode a sentence
+      ioWrapper->ReadInput(staticData.GetInputType(),source);
+      source->SetTranslationId(lineCount);
+      // set up task of translating one sentence
+      TranslationTask* task = new TranslationTask(source, *ioWrapper);
+      task->Run();
+      delete task;
+      source = NULL;
+      ++lineCount;
+
+      // compute violation
       PerceptronData hfd;
       decoder->Perceptron(bg,wv,&hfd);
 
@@ -285,19 +355,19 @@ int main(int argc, char** argv)
 
         if (diff_score < 0) {
           wv.update(diff,1.0);
-          wv2.update(diff,1.0*totalCount);
+          //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;
         }
 
         // Update BLEU statistics
-        for(size_t k=0; k<bg.size(); k++) {
+        /*for(size_t k=0; k<bg.size(); k++) {
           bg[k]*=decay;
           if(model_bg)
             bg[k]+=hfd.modelStats[k];
           else
             bg[k]+=hfd.hopeStats[k];
-        }
+        }*/
       }
       iNumExamples++;
       ++sentenceIndex;
@@ -317,11 +387,11 @@ int main(int argc, char** argv)
 
     AvgWeightVector avg = wv.avg();
     avg.noavg = true;
-    ValType bleu = decoder->Evaluate(avg);
-    cerr << ", BLEU = " << bleu << endl;
+    //ValType bleu = decoder->Evaluate(avg);
+    //cerr << ", BLEU = " << bleu << endl;
 
-    if (bleu > bestBleu) {
-      bestBleu = bleu;
+    //if (bleu > bestBleu) {
+    //  bestBleu = bleu;
 
       ostream* out;
       ofstream outFile;
@@ -344,7 +414,7 @@ int main(int argc, char** argv)
         }
       }
       outFile.close();
-    }
+   // }
   }
 
   // averaged perceptron
@@ -378,8 +448,8 @@ int main(int argc, char** argv)
   }
   outFile.close();*/
 
-  cerr << "Best BLEU = " << bestBleu << endl;
-}
+ // cerr << "Best BLEU = " << bestBleu << endl;
+//}
 // --Emacs trickery--
 // Local Variables:
 // mode:c++

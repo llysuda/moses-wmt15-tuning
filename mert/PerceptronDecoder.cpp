@@ -406,7 +406,7 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
   size_t fileCount = 0;
 
   cerr << "counting  hypergraphs" << endl;
-  for (fs::directory_iterator di(hypergraphDir); di != dend; ++di) {
+  for (fs::directory_iterator di(hypergraphDirRef); di != dend; ++di) {
     const fs::path& hgpath = di->path();
     if (hgpath.filename() == kWeights) continue;
     ++fileCount;
