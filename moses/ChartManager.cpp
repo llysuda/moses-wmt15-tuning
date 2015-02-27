@@ -834,11 +834,13 @@ void ChartManager::OutputReachableHypo(OutputCollector *collector, size_t transl
   std::ostringstream out;
   FixPrecision(out);
 
+  size_t MIN_LEN = 5;
+
   size_t size = m_source.GetSize();
   if (size == 0 || size < 5) // empty source
       return;
 
-  for(size_t width = 5; width <= size; width++) {
+  for(size_t width = MIN_LEN; width <= size; width++) {
     for(size_t start = 0; start < size-width+1; start++) {
       size_t end = start + width - 1;
       WordsRange range(start, end);
@@ -851,21 +853,13 @@ void ChartManager::OutputReachableHypo(OutputCollector *collector, size_t transl
         Backtrack(hypo);
         VERBOSE(3,"0" << std::endl);
 
-        if (StaticData::Instance().GetOutputHypoScore()) {
-          out << hypo->GetTotalScore() << " ";
-        }
-
-        if (StaticData::Instance().IsPathRecoveryEnabled()) {
-          out << "||| ";
-        }
-
         // target phrase
         Phrase outPhrase(ARRAY_SIZE_INCR);
         hypo->GetOutputPhrase(outPhrase);
 
         // delete 1st & last
-        UTIL_THROW_IF2(outPhrase.GetSize() < 2,
-                       "Output phrase should have contained at least 2 words (beginning and end-of-sentence)");
+        //UTIL_THROW_IF2(outPhrase.GetSize() < 2,
+        //               "Output phrase should have contained at least 2 words (beginning and end-of-sentence)");
 
         // source phrase
         Phrase srcPhrase = m_source.GetSubString(range);
@@ -879,14 +873,19 @@ void ChartManager::OutputReachableHypo(OutputCollector *collector, size_t transl
         if (end == size - 1)
           srcPhrase.RemoveWord(srcPhrase.GetSize() - 1);
 
-        const std::vector<FactorType> inputFactorOrder = StaticData::Instance().GetInputFactorOrder();
-        string srcoutput = srcPhrase.GetStringRep(inputFactorOrder);
-        out << srcoutput << " ||| ";
+        if (srcPhrase.GetSize() < MIN_LEN)
+          continue;
 
         if (start == 0)
           outPhrase.RemoveWord(0);
         if (end == size - 1)
           outPhrase.RemoveWord(outPhrase.GetSize() - 1);
+        if (outPhrase.GetSize() < MIN_LEN)
+          continue;
+
+        const std::vector<FactorType> inputFactorOrder = StaticData::Instance().GetInputFactorOrder();
+        string srcoutput = srcPhrase.GetStringRep(inputFactorOrder);
+        out << srcoutput << " ||| ";
 
         const std::vector<FactorType> outputFactorOrder = StaticData::Instance().GetOutputFactorOrder();
         string output = outPhrase.GetStringRep(outputFactorOrder);
