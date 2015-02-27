@@ -167,6 +167,8 @@ my $dev_symal_abs = undef;
 my $working_dir_abs = undef;
 
 my $normalize = 0;
+my $ONLINE = 0;
+my $MOSES_ARGS = undef;
 
 use Getopt::Long;
 GetOptions(
@@ -223,7 +225,9 @@ GetOptions(
   "promix-table=s" => \@__PROMIX_TABLES,
   "threads=i" => \$__THREADS,
   "spe-symal=s" => \$___DEV_SYMAL,
-  "norm" => \$normalize
+  "norm" => \$normalize,
+  "online" => \$ONLINE,
+  "moses-args" => \$MOSES_ARGS;
 ) or exit(1);
 
 # the 4 required parameters can be supplied on the command line directly
@@ -959,7 +963,11 @@ while (1) {
     &submit_or_exec($cmd, "run$run.mira.out", $mert_logfile);
   } elsif ($___HG_MIRA) {
     safesystem("echo 'not used' > $weights_out_file") or die;
-    $mira_settings .= " --type hypergraph ";
+    if (!$ONLINE) {
+        $mira_settings .= " --type hypergraph ";
+    } else {
+        $mira_settings .= " --hgdirref $hypergraph_dir_ref ";
+    }
     $mira_settings .= join(" ", map {"--reference $_"} @references);
     $mira_settings .= " --hgdir $hypergraph_dir ";
     #$mira_settings .= "--verbose "; 
