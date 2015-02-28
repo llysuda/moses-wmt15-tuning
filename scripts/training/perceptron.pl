@@ -169,6 +169,9 @@ my $working_dir_abs = undef;
 my $normalize = 0;
 my $ONLINE = 0;
 my $MOSES_ARGS = undef;
+my $hypergraph_dir_ref = "";
+
+my $MAXVIO = 0;
 
 use Getopt::Long;
 GetOptions(
@@ -227,7 +230,8 @@ GetOptions(
   "spe-symal=s" => \$___DEV_SYMAL,
   "norm" => \$normalize,
   "online" => \$ONLINE,
-  "moses-args" => \$MOSES_ARGS;
+  "maxvio" => \$MAXVIO,
+  "hg-dir-ref=s" => \$hypergraph_dir_ref
 ) or exit(1);
 
 # the 4 required parameters can be supplied on the command line directly
@@ -359,6 +363,9 @@ my $mert_extract_cmd = File::Spec->catfile($mertdir, "extractor");
 my $mert_mert_cmd    = File::Spec->catfile($mertdir, "mert");
 my $mert_pro_cmd     = File::Spec->catfile($mertdir, "pro");
 my $mert_mira_cmd    = File::Spec->catfile($mertdir, "perceptron");
+if ($ONLINE) {
+    $mert_mira_cmd    = File::Spec->catfile($mertdir, "perceptron_online");
+}
 my $mert_eval_cmd    = File::Spec->catfile($mertdir, "evaluator");
 
 die "Not executable: $mert_extract_cmd" if ! -x $mert_extract_cmd;
@@ -963,10 +970,15 @@ while (1) {
     &submit_or_exec($cmd, "run$run.mira.out", $mert_logfile);
   } elsif ($___HG_MIRA) {
     safesystem("echo 'not used' > $weights_out_file") or die;
-    if (!$ONLINE) {
+    if (!$ONLINE && !$MAXVIO) {
         $mira_settings .= " --type hypergraph ";
+    } elsif ($MAXVIO) {
+        $mira_settings .= " --type maxvio ";
+        $mira_settings .= " --hgdirref $hypergraph_dir_ref ";
     } else {
         $mira_settings .= " --hgdirref $hypergraph_dir_ref ";
+        #$mira_settings .= " -mosesini run$run.moses.ini ";
+        $mira_settings .= " --mosesargs \"-output-search-graph-hypergraph true gz -f run$run.moses.ini -i $___DEV_F\" ";
     }
     $mira_settings .= join(" ", map {"--reference $_"} @references);
     $mira_settings .= " --hgdir $hypergraph_dir ";
@@ -1276,7 +1288,9 @@ sub run_decoder {
       my $nbest_list_cmd = "-n-best-list $filename $___N_BEST_LIST_SIZE distinct";
       if ($___HG_MIRA) {
         safesystem("rm -rf $hypergraph_dir");
-        $nbest_list_cmd .= " -output-search-graph-hypergraph true gz";
+        if (!$ONLINE) {
+            $nbest_list_cmd .= " -output-search-graph-hypergraph true gz";
+        }
       }
       $decoder_cmd = "$___DECODER $___DECODER_FLAGS  -config $___CONFIG";
       $decoder_cmd .= " -inputtype $___INPUTTYPE" if defined($___INPUTTYPE);

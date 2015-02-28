@@ -61,6 +61,8 @@ de recherches du Canada
 #include "moses/FF/StatelessFeatureFunction.h"
 #include "moses/TranslationTask.h"
 
+#include <map>
+
 using namespace std;
 using namespace MosesTuning;
 using namespace Moses;
@@ -75,6 +77,60 @@ char**convert(const vector<std::string> & svec)
     std::strcpy(arr[i], svec[i].c_str());
   }
    return arr;
+}
+
+void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& score, size_t denseSize) {
+
+  SparseVector svec;
+  wv.ToSparse(&svec);
+
+  // dense features
+  map<string, pair<size_t, size_t> > nameIndexMap = score.GetCoreNameIndexes();
+  map<string, bool > tuneMap = score.GetTunableMap();
+  std::valarray<float> denseScore(score.getCoreFeatures());
+  for(map<string, pair<size_t, size_t> >::const_iterator iter = nameIndexMap.begin();
+      iter != nameIndexMap.end(); ++iter) {
+    string name = iter->first;
+    pair<size_t, size_t> pos = iter->second;
+
+    if (! tuneMap.find(name)->second)
+      continue;
+
+    if (pos.second - pos.first == 1) {
+      denseScore[pos.first] = svec.get(name);
+    } else if (pos.second > pos.second + 1) {
+      size_t feature_ctr = 1;
+      for(size_t idx = pos.first; idx < pos.second; ++idx,++feature_ctr) {
+        stringstream namestr;
+        namestr << name << "_" << feature_ctr;
+        denseScore[idx] = svec.get(namestr.str());
+      }
+    }
+  }
+  for(size_t i = 0; i < denseScore.size(); i++)
+    score.Assign(i, denseScore[i]);
+
+  // sparse features
+  for(size_t i = denseSize; i < svec.size(); i++) {
+    string name = SparseVector::decode(i-denseSize);
+    if (tuneMap.find(name) == tuneMap.end()) {
+      score.Assign(name, svec.get(name));
+    } else {
+      cerr << "not sparse: " << name << endl;
+    }
+  }
+
+}
+
+void UpdateDecoderWeights(const MiraWeightVector& wv, size_t denseSize) {
+  StaticData& staticData = StaticData::InstanceNonConst();
+  const ScoreComponentCollection& weights = staticData.GetAllWeights();
+  cerr << weights << endl;
+  ScoreComponentCollection update;
+  SparseVec2ScoreComp(wv, update, denseSize);
+  cerr << wv << endl;
+  staticData.SetAllWeights(update);
+  cerr << staticData.GetAllWeights() << endl;
 }
 
 int main(int argc, char** argv)
@@ -133,8 +189,6 @@ int main(int argc, char** argv)
   ("safe-hope", po::value(&safe_hope)->zero_tokens()->default_value(false), "Mode score's influence on hope decoding is limited")
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("mosesargs", po::value<string>(&mosesargs), "decoder args")
-  ("input", po::value<string>(&inputFile), "input file")
-  ("decoder", po::value<string>(&decoderCmd), "input file")
   ;
 
   po::options_description cmdline_options;
@@ -355,6 +409,7 @@ int main(int argc, char** argv)
 
         if (diff_score < 0) {
           wv.update(diff,1.0);
+          UpdateDecoderWeights(wv, initDenseSize);
           //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;

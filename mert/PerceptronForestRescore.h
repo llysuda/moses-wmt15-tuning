@@ -36,12 +36,12 @@ namespace MosesTuning
 
 typedef pair<const Edge*,FeatureStatsType> BackPointer;
 
-static void GetBestHypothesis(size_t vertexId, const Graph& graph, const vector<BackPointer>& bps,
+static bool GetBestHypothesis(size_t vertexId, const Graph& graph, const vector<BackPointer>& bps,
                               HgHypothesis* bestHypo)
 {
   //cerr << "Expanding " << vertexId << " Score: " << bps[vertexId].second << endl;
   //UTIL_THROW_IF(bps[vertexId].second == kMinScore+1, HypergraphException, "Landed at vertex " << vertexId << " which is a dead end");
-  if (!bps[vertexId].first) return;
+  if (!bps[vertexId].first) return false;
   const Edge* prevEdge = bps[vertexId].first;
   bestHypo->featureVector += *(prevEdge->Features().get());
   size_t childId = 0;
@@ -56,14 +56,15 @@ static void GetBestHypothesis(size_t vertexId, const Graph& graph, const vector<
       bestHypo->featureVector += childHypo.featureVector;
     }
   }
+  return true;
 }
 
 void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  vector<vector<HgHypothesis*> >& bestHypos)
 {
-  size_t size = graph.VertexSize();
+  size_t size = graph.GetVertex(graph.VertexSize()-1).SourceCovered();
   bestHypos.resize(size);
   for(size_t i = 0; i < size; i++) {
-    bestHypos[i].resize(size-i);
+    bestHypos[i] = vector<HgHypothesis*>(size-i, NULL);
   }
 
   BackPointer init(NULL,kMinScore);
@@ -131,10 +132,12 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
     }
 //    cerr  << "backpointer[" << vi << "] = (" << backPointers[vi].first << "," << backPointers[vi].second << ")" << endl;
     HgHypothesis bestHypo;
-    GetBestHypothesis(vi, graph, backPointers, &bestHypo);
+    bool flag = GetBestHypothesis(vi, graph, backPointers, &bestHypo);
+    if (!flag)
+      continue;
 
     const HgHypothesis* h = bestHypos[vertex.startPos][vertex.endPos-vertex.startPos];
-    if (! h || h->featureVector.inner_product(weights) < bestHypo.featureVector.inner_product(weights)) {
+    if (h == NULL || inner_product(h->featureVector,weights) < inner_product(bestHypo.featureVector,weights)) {
       bestHypos[vertex.startPos][vertex.endPos-vertex.startPos] = &bestHypo;
     }
   }

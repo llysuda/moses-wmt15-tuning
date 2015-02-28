@@ -392,7 +392,7 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
 {
 
   UTIL_THROW_IF(streaming, util::Exception, "Streaming not currently supported for maxvio");
-  UTIL_THROW_IF(!fs::exists(hypergraphDir), HypergraphException, "Directory '" << hypergraphDir << "' does not exist");
+  //UTIL_THROW_IF(!fs::exists(hypergraphDir), HypergraphException, "Directory '" << hypergraphDir << "' does not exist");
   UTIL_THROW_IF(!fs::exists(hypergraphDirRef), HypergraphException, "Directory '" << hypergraphDirRef << "' does not exist");
   UTIL_THROW_IF(!referenceFiles.size(), util::Exception, "No reference files supplied");
   references_.Load(referenceFiles, vocab_);
@@ -438,13 +438,15 @@ bool MaxvioPerceptronDecoder::finished()
 
 void MaxvioPerceptronDecoder::ReadAGraph(size_t sentenceId, const string& hypergraphDir, Graph* graph) {
   // read hypergraph of hypoes.
-  fs::directory_iterator di(hypergraphDir);
+  //fs::directory_iterator di(hypergraphDir);
   //di = di + sentenceId;
-  for (size_t i = 0; i < sentenceId; i++)
-    ++di;
-  const fs::path& hgpath = di->path();
+  //for (size_t i = 0; i < sentenceId; i++)
+  //  ++di;
+  //const fs::path& hgpath = di->path();
+  fs::path hgpath(hypergraphDir+"/"+boost::lexical_cast<std::string>(sentenceId)+".gz");
   //Graph graph(vocab_);
-  size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
+  //size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
+  //fs::path newpath = hgpath.parent_path() +fs::path(Moses::SPrint<size_t>(sentenceId)) + hgpath.stem()
   util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
   util::FilePiece file(fd.release());
   ReadGraph(file,*graph);
@@ -484,12 +486,17 @@ void MaxvioPerceptronDecoder::Perceptron(
   float maxvio = 0.0;
 
   size_t size = hypVio.size();
-  for(size_t width = 5; width <= size; width++) {
+  assert(size == refVio.size());
+
+  for(size_t width = 1; width < size; width++) {
     for (size_t i = 0; i < size-width + 1; i++) {
       size_t j = i + width -1;
 
-      float scoreHyp = hypVio[i][j-i]->featureVector.inner_product(weights);
-      float scoreRef = refVio[i][j-i]->featureVector.inner_product(weights);
+      if (hypVio[i][j-i] == NULL || refVio[i][j-i] == NULL)
+        continue;
+
+      float scoreHyp = inner_product(hypVio[i][j-i]->featureVector, weights);
+      float scoreRef = inner_product(refVio[i][j-i]->featureVector, weights);
 
       if (scoreRef < scoreHyp && scoreHyp-scoreRef > maxvio) {
         besti = i;

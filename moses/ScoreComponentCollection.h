@@ -115,6 +115,27 @@ public:
   }
 
 public:
+
+  std::map<std::string, IndexPair> GetCoreNameIndexes() const {
+    std::map<std::string, IndexPair> ret;
+    ScoreIndexMap::const_iterator iter = s_scoreIndexes.begin();
+    for(; iter != s_scoreIndexes.end(); ++iter) {
+      std::string name = iter->first->GetScoreProducerDescription();
+      ret[name] = iter->second;
+    }
+    return ret;
+  }
+
+  std::map<std::string, bool> GetTunableMap() const {
+    std::map<std::string, bool> ret;
+    ScoreIndexMap::const_iterator iter = s_scoreIndexes.begin();
+    for(; iter != s_scoreIndexes.end(); ++iter) {
+      std::string name = iter->first->GetScoreProducerDescription();
+      ret[name] = iter->first->IsTuneable();
+    }
+    return ret;
+  }
+
   static void ResetCounter() {
     s_denseVectorSize = 0;
   }

@@ -320,7 +320,7 @@ int main(int argc, char** argv)
     ValType bleu = decoder->Evaluate(avg);
     cerr << ", BLEU = " << bleu << endl;
 
-    if (bleu > bestBleu) {
+    if (bleu > bestBleu || type == "maxvio") {
       bestBleu = bleu;
 
       ostream* out;
