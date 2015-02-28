@@ -469,8 +469,8 @@ void MaxvioPerceptronDecoder::Perceptron(
   ReadAGraph(sentenceId, hypergraphDirRef, &graphRef);
 
   ValType hope_scale = 1.0;
-  vector<vector<HgHypothesis*> > hypVio;
-  vector<vector<HgHypothesis*> > refVio;
+  vector<vector<const HgHypothesis*> > hypVio;
+  vector<vector<const HgHypothesis*> > refVio;
   for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
 
     //Model decode

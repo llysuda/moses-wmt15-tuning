@@ -59,12 +59,12 @@ static bool GetBestHypothesis(size_t vertexId, const Graph& graph, const vector<
   return true;
 }
 
-void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  vector<vector<HgHypothesis*> >& bestHypos)
+void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  vector<vector<const HgHypothesis*> >& bestHypos)
 {
   size_t size = graph.GetVertex(graph.VertexSize()-1).SourceCovered();
   bestHypos.resize(size);
   for(size_t i = 0; i < size; i++) {
-    bestHypos[i] = vector<HgHypothesis*>(size-i, NULL);
+    bestHypos[i] = vector<const HgHypothesis*>(size-i, NULL);
   }
 
   BackPointer init(NULL,kMinScore);
