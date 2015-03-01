@@ -498,8 +498,8 @@ void MaxvioPerceptronDecoder::Perceptron(
   Range bestr(0,0);
   float maxvio = 0.0;
 
-  const HgHypothesis* modelHypo;
-  const HgHypothesis* hopeHypo;
+  //const HgHypothesis* modelHypo;
+  //const HgHypothesis* hopeHypo;
   //size_t size = hypVio.size();
   //assert(size == refVio.size());
 
@@ -518,8 +518,8 @@ void MaxvioPerceptronDecoder::Perceptron(
     if (scoreRef < scoreHyp && scoreHyp-scoreRef > maxvio) {
       bestr = ri->first;
       maxvio = scoreHyp-scoreRef;
-      modelHypo = &(hi->second);
-      hopeHypo = &(ri->second);
+      //modelHypo = &(hi->second);
+      //hopeHypo = &(ri->second);
     }
   }
 
@@ -527,9 +527,13 @@ void MaxvioPerceptronDecoder::Perceptron(
     Perceptron->hopeModelEqual = true;
     return;
   }
+
+  const HgHypothesis& modelHypo = hypVio.find(bestr)->second;
+  const HgHypothesis& hopeHypo = refVio.find(bestr)->second;
+
   //modelFeatures, hopeFeatures and fearFeatures
-  Perceptron->modelFeatures = MiraFeatureVector(modelHypo->featureVector, num_dense_);
-  Perceptron->hopeFeatures = MiraFeatureVector(hopeHypo->featureVector, num_dense_);
+  Perceptron->modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
+  Perceptron->hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
   Perceptron->hopeModelEqual = false;
 
   //Perceptron->hopeBleu = 1.0;
@@ -543,14 +547,14 @@ void MaxvioPerceptronDecoder::Perceptron(
   //vector<ValType> fearStats(scorer_->NumberOfScores());
   size_t size = graphHyp.GetVertex(graphHyp.VertexSize()-1).SourceCovered();
 
-  modelHypo = &(hypVio.find(Range(0,size-1))->second);
-  hopeHypo = &(refVio.find(Range(0,size-1))->second);
+  //modelHypo = hypVio.find(Range(0,size-1))->second;
+  //hopeHypo = refVio.find(Range(0,size-1))->second;
 
   Perceptron->hopeStats.reserve(scorer_->NumberOfScores());
   Perceptron->modelStats.reserve(scorer_->NumberOfScores());
   for (size_t i = 0; i < scorer_->NumberOfScores(); ++i) {
-    Perceptron->modelStats.push_back(modelHypo->bleuStats[i]);
-    Perceptron->hopeStats.push_back(hopeHypo->bleuStats[i]);
+    Perceptron->modelStats.push_back(modelHypo.bleuStats[i]);
+    Perceptron->hopeStats.push_back(hopeHypo.bleuStats[i]);
 
     //fearStats[i] = fearHypo.bleuStats[i];
   }
