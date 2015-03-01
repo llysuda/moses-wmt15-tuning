@@ -379,7 +379,7 @@ int main(int argc, char** argv)
       source = NULL;
       ++lineCount;
 
-      cerr << wv << endl;
+      //cerr << wv << endl;
       // compute violation
       PerceptronData hfd;
       decoder->Perceptron(bg,wv,&hfd);
@@ -411,7 +411,7 @@ int main(int argc, char** argv)
         }*/
 
         if (diff_score < 0) {
-          cerr << diff << endl;
+          //cerr << diff << endl;
           wv.update(diff,1.0);
           //UpdateDecoderWeights(wv, initDenseSize);
           //wv2.update(diff,1.0*totalCount);

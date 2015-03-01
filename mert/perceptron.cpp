@@ -255,7 +255,7 @@ int main(int argc, char** argv)
     size_t sentenceIndex = 0;
     for(decoder->reset(); !decoder->finished(); decoder->next()) {
       PerceptronData hfd;
-      cerr << "wv: " << wv << endl;
+      //cerr << "wv: " << wv << endl;
       decoder->Perceptron(bg,wv,&hfd);
 
       // Update weights
@@ -284,7 +284,7 @@ int main(int argc, char** argv)
           iNumUpdates++;
         }*/
 
-        cerr << "diff: " << diff << endl;
+        //cerr << "diff: " << diff << endl;
 
         if (diff_score < 0) {
           wv.update(diff,1.0);
