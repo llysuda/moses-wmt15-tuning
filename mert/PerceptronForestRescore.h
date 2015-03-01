@@ -29,6 +29,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "BleuScorer.h"
 #include "ForestRescore.h"
 
+#include <boost/make_shared.hpp>
+#include <boost/shared_ptr.hpp>
+
 using namespace std;
 
 namespace MosesTuning
@@ -59,13 +62,17 @@ static bool GetBestHypothesis(size_t vertexId, const Graph& graph, const vector<
   return true;
 }
 
-void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  vector<vector<const HgHypothesis*> >& bestHypos)
+typedef pair<size_t, size_t> Range ;
+
+void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  map<Range, HgHypothesis >& bestHypos)
 {
   size_t size = graph.GetVertex(graph.VertexSize()-1).SourceCovered();
-  bestHypos.resize(size);
-  for(size_t i = 0; i < size; i++) {
-    bestHypos[i] = vector<const HgHypothesis*>(size-i, NULL);
-  }
+  //bestHypos.resize(size);
+  //for(size_t i = 0; i < size; i++) {
+  //  bestHypos[i].resize(size-i, HgHypothesis());
+  //}
+
+  //std::set<pair<size_t, size_t> > exists;
 
   BackPointer init(NULL,kMinScore);
   vector<BackPointer> backPointers(graph.VertexSize(),init);
@@ -136,11 +143,49 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
     if (!flag)
       continue;
 
-    const HgHypothesis* h = bestHypos[vertex.startPos][vertex.endPos-vertex.startPos];
-    if (h == NULL || inner_product(h->featureVector,weights) < inner_product(bestHypo.featureVector,weights)) {
-      bestHypos[vertex.startPos][vertex.endPos-vertex.startPos] = &bestHypo;
+    // update BLEU
+    bestHypo.bleuStats.resize(kBleuNgramOrder*2+1);
+    NgramCounter counts;
+    list<WordVec> openNgrams;
+    for (size_t i = 0; i < bestHypo.text.size(); ++i) {
+      const Vocab::Entry* entry = bestHypo.text[i];
+      if (graph.IsBoundary(entry)) continue;
+      openNgrams.push_front(WordVec());
+      for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
+        k->push_back(entry);
+        ++counts[*k];
+      }
+      if (openNgrams.size() >=  kBleuNgramOrder) openNgrams.pop_back();
+    }
+    for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
+      size_t order = ngi->first.size();
+      size_t count = ngi->second;
+      bestHypo.bleuStats[(order-1)*2 + 1] += count;
+      bestHypo.bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
+    }
+    bestHypo.bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
+
+    //
+    size_t s = vertex.startPos;
+    size_t e = vertex.endPos;
+
+    Range r(s,e);
+
+    //const HgHypothesis& h = bestHypos[][-vertex.startPos];
+    map<Range, HgHypothesis >::iterator iter = bestHypos.find(r);
+    if (iter == bestHypos.end()  || inner_product(iter->second.featureVector,weights) < inner_product(bestHypo.featureVector,weights)) {
+      bestHypos[r] = bestHypo;
+      //bestHypo.featureVector.write(cerr, " "); cerr << endl;
     }
   }
+
+  /*cerr << "BEGIN" << endl;
+  map<Range, HgHypothesis >::iterator iter = bestHypos.begin();
+  for(; iter != bestHypos.end(); iter++) {
+    iter->second.featureVector.write(cerr, " "); cerr << endl;
+  }
+  cerr << "END" << endl;
+  exit(1);*/
 
   //expand back pointers
 

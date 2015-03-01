@@ -106,6 +106,7 @@ bool StaticData::LoadData(Parameter *parameter)
   const PARAM_VEC *params;
 
   m_parameter->SetParameter(reachableSpanPair, "reachable-span-pair", false);
+  m_parameter->SetParameter(m_onlyTunable, "only-tunable", false);
 
   // verbose level
   m_parameter->SetParameter(m_verboseLevel, "verbose", (size_t) 1);

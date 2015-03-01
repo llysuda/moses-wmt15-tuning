@@ -978,7 +978,7 @@ while (1) {
     } else {
         $mira_settings .= " --hgdirref $hypergraph_dir_ref ";
         #$mira_settings .= " -mosesini run$run.moses.ini ";
-        $mira_settings .= " --mosesargs \"-output-search-graph-hypergraph true gz -f run$run.moses.ini -i $___DEV_F\" ";
+        $mira_settings .= " --mosesargs \"-only-tunable -output-search-graph-hypergraph true gz -f run$run.moses.ini -i $___DEV_F\" ";
     }
     $mira_settings .= join(" ", map {"--reference $_"} @references);
     $mira_settings .= " --hgdir $hypergraph_dir ";
@@ -1289,7 +1289,7 @@ sub run_decoder {
       if ($___HG_MIRA) {
         safesystem("rm -rf $hypergraph_dir");
         if (!$ONLINE) {
-            $nbest_list_cmd .= " -output-search-graph-hypergraph true gz";
+            $nbest_list_cmd .= " -output-search-graph-hypergraph true gz -only-tunable";
         }
       }
       $decoder_cmd = "$___DECODER $___DECODER_FLAGS  -config $___CONFIG";

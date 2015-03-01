@@ -188,7 +188,7 @@ public:
   );
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
-  void ReadAGraph(size_t sentenceId, const std::string& hypergraphDir, Graph* graph);
+  void ReadAGraph(size_t sentenceId, const std::string& hypergraphDir, Graph* graph, const SparseVector& weights);
 
 private:
   size_t num_dense_;
@@ -201,6 +201,7 @@ private:
   Vocab vocab_;
   std::string hypergraphDirHyp;
   std::string hypergraphDirRef;
+  size_t hg_pruning;
 };
 
 };

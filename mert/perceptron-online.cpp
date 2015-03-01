@@ -302,6 +302,8 @@ int main(int argc, char** argv)
   }
 
   MiraWeightVector wv(initParams);
+  //SparseVector sv;
+  //wv.ToSparse(&sv);
   //MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
 
   // Initialize scorer
@@ -377,6 +379,7 @@ int main(int argc, char** argv)
       source = NULL;
       ++lineCount;
 
+      cerr << wv << endl;
       // compute violation
       PerceptronData hfd;
       decoder->Perceptron(bg,wv,&hfd);
@@ -408,8 +411,9 @@ int main(int argc, char** argv)
         }*/
 
         if (diff_score < 0) {
+          cerr << diff << endl;
           wv.update(diff,1.0);
-          UpdateDecoderWeights(wv, initDenseSize);
+          //UpdateDecoderWeights(wv, initDenseSize);
           //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;

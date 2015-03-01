@@ -235,6 +235,7 @@ protected:
   const StatefulFeatureFunction* m_treeStructure;
 
   bool reachableSpanPair;
+  bool m_onlyTunable;
 
   // number of nonterminal labels
 //   size_t m_nonTerminalSize;
@@ -802,6 +803,10 @@ public:
 
   bool GetReachableSpanPair() const {
     return reachableSpanPair;
+  }
+
+  bool GetOnlyTunable() const {
+    return m_onlyTunable;
   }
 
 };
