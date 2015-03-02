@@ -437,7 +437,7 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
 
     //++fileCount;
   }
-  cerr << endl << "Done" << endl;
+  cerr << fileCount << endl << "Done" << endl;
 
 
   if (readHyp) {
@@ -530,33 +530,38 @@ void MaxvioPerceptronDecoder::Perceptron(
   SparseVector weights;
   wv.ToSparse(&weights, num_dense_);
 
-  Graph* graphHyp = new Graph(vocab_);
-  Graph* graphRef = new Graph(vocab_);
+  //Graph* graphHyp = new Graph(vocab_);
+  //Graph* graphRef = new Graph(vocab_);
+  boost::shared_ptr<Graph> graphHyp;
+  boost::shared_ptr<Graph> graphRef;
 
   if (!readHyp_) {
-    //Graph graphHyp(vocab_);
-    ReadAGraph(sentenceId, hypergraphDirHyp, graphHyp, weights);
+    graphHyp.reset(new Graph(vocab_));
+    ReadAGraph(sentenceId, hypergraphDirHyp, graphHyp.get(), weights);
   } else {
-    graphHyp = &(*graphs_hyp[sentenceId]);
+    //graphHyp.reset(graphs_hyp[sentenceId], new Graph(vocab_));
+    graphHyp = graphs_hyp[sentenceId];
   }
   if (!readRef_) {
-    //Graph graphRef(vocab_);
-    ReadAGraph(sentenceId, hypergraphDirRef, graphRef, weights);
+    graphRef.reset(new Graph(vocab_));
+    ReadAGraph(sentenceId, hypergraphDirRef, graphRef.get(), weights);
   } else {
-    graphRef = &(*graphs_ref[sentenceId]);
+    //graphRef.reset(graphs_ref[sentenceId], new Graph(vocab_));
+    graphRef = graphs_ref[sentenceId];
   }
 
   //SparseVector weights;
   //wv.ToSparse(&weights);
 
   ValType hope_scale = 1.0;
-  map<Range, HgHypothesis > hypVio;
-  map<Range, HgHypothesis > refVio;
+
+  VioColl hypVio;
+  VioColl refVio;
   for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
 
     //Model decode
-    Viterbi(*graphHyp, weights, 0, references_, sentenceId, backgroundBleu, hypVio);
-    Viterbi(*graphRef, weights, 0, references_, sentenceId, backgroundBleu, refVio);
+    Viterbi(*(graphHyp), weights, 0, references_, sentenceId, backgroundBleu, hypVio);
+    Viterbi(*(graphRef), weights, 0, references_, sentenceId, backgroundBleu, refVio);
 
     break;
   }
@@ -570,13 +575,13 @@ void MaxvioPerceptronDecoder::Perceptron(
   //size_t size = hypVio.size();
   //assert(size == refVio.size());
 
-  for(map<Range, HgHypothesis >::const_iterator hi = hypVio.begin(); hi != hypVio.end(); ++hi) {
-    map<Range, HgHypothesis >::const_iterator ri = refVio.find(hi->first);
+  for(VioColl::const_iterator hi = hypVio.begin(); hi != hypVio.end(); ++hi) {
+    VioColl::const_iterator ri = refVio.find(hi->first);
     if (ri == refVio.end())
       continue;
 
-    float scoreHyp = inner_product(hi->second.featureVector, weights);
-    float scoreRef = inner_product(ri->second.featureVector, weights);
+    float scoreHyp = inner_product((*hi->second).featureVector, weights);
+    float scoreRef = inner_product((*ri->second).featureVector, weights);
 
     //cerr << hi->first.first << " " << hi->first.second << endl;
     //hi->second.featureVector.write(cerr, " "); cerr << endl;
@@ -602,8 +607,8 @@ void MaxvioPerceptronDecoder::Perceptron(
   }
 
   //modelFeatures, hopeFeatures and fearFeatures
-  Perceptron->modelFeatures = MiraFeatureVector(hypVio.find(bestr)->second.featureVector, num_dense_);
-  Perceptron->hopeFeatures = MiraFeatureVector(refVio.find(bestr)->second.featureVector, num_dense_);
+  Perceptron->modelFeatures = MiraFeatureVector((*hypVio.find(bestr)->second).featureVector, num_dense_);
+  Perceptron->hopeFeatures = MiraFeatureVector((*refVio.find(bestr)->second).featureVector, num_dense_);
   Perceptron->hopeModelEqual = false;
 
   /*for(size_t i = 0; i < Perceptron->hopeFeatures.size(); i++) {
@@ -625,12 +630,12 @@ void MaxvioPerceptronDecoder::Perceptron(
   //Only C++11
   //Perceptron->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
   //vector<ValType> fearStats(scorer_->NumberOfScores());
-  size_t size = graphHyp->GetVertex(graphHyp->VertexSize()-1).SourceCovered();
+  size_t size = (*graphHyp).GetVertex((*graphHyp).VertexSize()-1).SourceCovered();
   Range fullRange(0, size-1);
   //modelHypo = hypVio.find(Range(0,size-1))->second;
   //hopeHypo = refVio.find(Range(0,size-1))->second;
-  const HgHypothesis& modelHypo = hypVio.find(bestr)->second;
-  const HgHypothesis& hopeHypo = refVio.find(bestr)->second;
+  const HgHypothesis& modelHypo = *(hypVio.find(bestr)->second);
+  const HgHypothesis& hopeHypo = *(refVio.find(bestr)->second);
 
   Perceptron->hopeStats.reserve(scorer_->NumberOfScores());
   Perceptron->modelStats.reserve(scorer_->NumberOfScores());

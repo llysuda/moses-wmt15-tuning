@@ -63,8 +63,9 @@ static bool GetBestHypothesis(size_t vertexId, const Graph& graph, const vector<
 }
 
 typedef pair<size_t, size_t> Range ;
+typedef map<Range, boost::shared_ptr<HgHypothesis> > VioColl;
 
-void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  map<Range, HgHypothesis >& bestHypos)
+void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, const ReferenceSet& references , size_t sentenceId, const std::vector<FeatureStatsType>& backgroundBleu,  VioColl& bestHypos)
 {
   size_t size = graph.GetVertex(graph.VertexSize()-1).SourceCovered();
   //bestHypos.resize(size);
@@ -138,8 +139,8 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
 
     }
 //    cerr  << "backpointer[" << vi << "] = (" << backPointers[vi].first << "," << backPointers[vi].second << ")" << endl;
-    HgHypothesis bestHypo;
-    bool flag = GetBestHypothesis(vi, graph, backPointers, &bestHypo);
+    boost::shared_ptr<HgHypothesis> bestHypo (new HgHypothesis());
+    bool flag = GetBestHypothesis(vi, graph, backPointers, bestHypo.get());
     if (!flag)
       continue;
 
@@ -150,11 +151,11 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
     }*/
 
     // update BLEU
-    bestHypo.bleuStats.resize(kBleuNgramOrder*2+1);
+    (*bestHypo).bleuStats.resize(kBleuNgramOrder*2+1);
     NgramCounter counts;
     list<WordVec> openNgrams;
-    for (size_t i = 0; i < bestHypo.text.size(); ++i) {
-      const Vocab::Entry* entry = bestHypo.text[i];
+    for (size_t i = 0; i < (*bestHypo).text.size(); ++i) {
+      const Vocab::Entry* entry = (*bestHypo).text[i];
       if (graph.IsBoundary(entry)) continue;
       openNgrams.push_front(WordVec());
       for (list<WordVec>::iterator k = openNgrams.begin(); k != openNgrams.end();  ++k) {
@@ -166,10 +167,10 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
     for (NgramCounter::const_iterator ngi = counts.begin(); ngi != counts.end(); ++ngi) {
       size_t order = ngi->first.size();
       size_t count = ngi->second;
-      bestHypo.bleuStats[(order-1)*2 + 1] += count;
-      bestHypo.bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
+      (*bestHypo).bleuStats[(order-1)*2 + 1] += count;
+      (*bestHypo).bleuStats[(order-1) * 2] += min(count, references.NgramMatches(sentenceId,ngi->first,true));
     }
-    bestHypo.bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
+    (*bestHypo).bleuStats[kBleuNgramOrder*2] = references.Length(sentenceId);
 
     //
     size_t s = vertex.startPos;
@@ -177,9 +178,8 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
 
     Range r(s,e);
 
-    //const HgHypothesis& h = bestHypos[][-vertex.startPos];
-    map<Range, HgHypothesis >::iterator iter = bestHypos.find(r);
-    if (iter == bestHypos.end()  || inner_product(iter->second.featureVector,weights) < inner_product(bestHypo.featureVector,weights)) {
+    VioColl::iterator iter = bestHypos.find(r);
+    if (iter == bestHypos.end()  || inner_product((*iter->second).featureVector,weights) < inner_product((*bestHypo).featureVector,weights)) {
       bestHypos[r] = bestHypo;
       //bestHypo.featureVector.write(cerr, " "); cerr << endl;
     }
