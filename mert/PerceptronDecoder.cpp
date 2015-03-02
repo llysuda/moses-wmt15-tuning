@@ -441,6 +441,7 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
 
 
   if (readHyp) {
+    size_t fileCount2 = 0;
     cerr << "counting  hyp hypergraphs" << endl;
     for (fs::directory_iterator di(hypergraphDir); di != dend; ++di) {
       const fs::path& hgpath = di->path();
@@ -461,13 +462,15 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
       graph.Prune(prunedGraph.get(), weights, edgeCount);
       graphs_hyp[id] = prunedGraph;
       // cerr << "Pruning to v=" << graphs_[id]->VertexSize() << " e=" << graphs_[id]->EdgeSize()  << endl;
-      ++fileCount;
-      if (fileCount % 10 == 0) cerr << ".";
-      if (fileCount % 400 ==  0) cerr << " [count=" << fileCount << "]\n";
+      ++fileCount2;
+      if (fileCount2 % 10 == 0) cerr << ".";
+      if (fileCount2 % 400 ==  0) cerr << " [count=" << fileCount << "]\n";
 
       //++fileCount;
     }
     cerr << endl << "Done" << endl;
+
+    assert(fileCount==fileCount2);
   }
 
   sentenceIds_.resize(fileCount);
