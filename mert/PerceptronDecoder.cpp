@@ -528,12 +528,9 @@ void MaxvioPerceptronDecoder::Perceptron(
     return;
   }
 
-  const HgHypothesis& modelHypo = hypVio.find(bestr)->second;
-  const HgHypothesis& hopeHypo = refVio.find(bestr)->second;
-
   //modelFeatures, hopeFeatures and fearFeatures
-  Perceptron->modelFeatures = MiraFeatureVector(modelHypo.featureVector, num_dense_);
-  Perceptron->hopeFeatures = MiraFeatureVector(hopeHypo.featureVector, num_dense_);
+  Perceptron->modelFeatures = MiraFeatureVector(hypVio.find(bestr)->second.featureVector, num_dense_);
+  Perceptron->hopeFeatures = MiraFeatureVector(refVio.find(bestr)->second.featureVector, num_dense_);
   Perceptron->hopeModelEqual = false;
 
   //Perceptron->hopeBleu = 1.0;
@@ -546,9 +543,11 @@ void MaxvioPerceptronDecoder::Perceptron(
   //Perceptron->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
   //vector<ValType> fearStats(scorer_->NumberOfScores());
   size_t size = graphHyp.GetVertex(graphHyp.VertexSize()-1).SourceCovered();
-
+  Range fullRange(0, size-1);
   //modelHypo = hypVio.find(Range(0,size-1))->second;
   //hopeHypo = refVio.find(Range(0,size-1))->second;
+  const HgHypothesis& modelHypo = hypVio.find(bestr)->second;
+  const HgHypothesis& hopeHypo = refVio.find(bestr)->second;
 
   Perceptron->hopeStats.reserve(scorer_->NumberOfScores());
   Perceptron->modelStats.reserve(scorer_->NumberOfScores());

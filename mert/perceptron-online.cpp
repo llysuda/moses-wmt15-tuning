@@ -413,20 +413,20 @@ int main(int argc, char** argv)
         if (diff_score < 0) {
           //cerr << diff << endl;
           wv.update(diff,1.0);
-          //UpdateDecoderWeights(wv, initDenseSize);
+          UpdateDecoderWeights(wv, initDenseSize);
           //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;
         }
 
         // Update BLEU statistics
-        /*for(size_t k=0; k<bg.size(); k++) {
+        for(size_t k=0; k<bg.size(); k++) {
           bg[k]*=decay;
           if(model_bg)
             bg[k]+=hfd.modelStats[k];
           else
             bg[k]+=hfd.hopeStats[k];
-        }*/
+        }
       }
       iNumExamples++;
       ++sentenceIndex;
@@ -446,11 +446,11 @@ int main(int argc, char** argv)
 
     AvgWeightVector avg = wv.avg();
     avg.noavg = true;
-    //ValType bleu = decoder->Evaluate(avg);
+    ValType bleu = decoder->Evaluate(avg);
     //cerr << ", BLEU = " << bleu << endl;
 
     //if (bleu > bestBleu) {
-    //  bestBleu = bleu;
+    bestBleu = bleu;
 
       ostream* out;
       ofstream outFile;
@@ -474,6 +474,7 @@ int main(int argc, char** argv)
       }
       outFile.close();
    // }
+      cerr << "Best BLEU = " << bestBleu << endl;
   }
 
   // averaged perceptron
@@ -507,7 +508,7 @@ int main(int argc, char** argv)
   }
   outFile.close();*/
 
- // cerr << "Best BLEU = " << bestBleu << endl;
+// cerr << "Best BLEU = " << bestBleu << endl;
 //}
 // --Emacs trickery--
 // Local Variables:

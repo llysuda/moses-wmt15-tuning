@@ -59,7 +59,7 @@ int main(int argc, char** argv)
   bool help;
   string denseInitFile;
   string sparseInitFile;
-  string type = "nbest";
+  string type = "maxvio";
   string sctype = "BLEU";
   string scconfig = "";
   vector<string> scoreFiles;
@@ -323,7 +323,7 @@ int main(int argc, char** argv)
     ValType bleu = decoder->Evaluate(avg);
     cerr << ", BLEU = " << bleu << endl;
 
-    if (bleu > bestBleu || type == "maxvio") {
+    if (bleu > bestBleu) {
       bestBleu = bleu;
 
       ostream* out;
