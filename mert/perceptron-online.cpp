@@ -163,6 +163,8 @@ int main(int argc, char** argv)
   string mosesargs;
   string inputFile;
   string decoderCmd = "";
+  bool readRef = false;
+  bool readHyp = false;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -190,6 +192,7 @@ int main(int argc, char** argv)
   ("safe-hope", po::value(&safe_hope)->zero_tokens()->default_value(false), "Mode score's influence on hope decoding is limited")
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("mosesargs", po::value<string>(&mosesargs), "decoder args")
+  ("read-ref", po::value(&readRef)->zero_tokens()->default_value(false), "read ref hypergraph into memory")
   ;
 
   po::options_description cmdline_options;
@@ -323,7 +326,7 @@ int main(int argc, char** argv)
   } else if (type == "hypergraph") {
     decoder.reset(new HypergraphPerceptronDecoder(hgDir, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
   } else if (type == "maxvio") {
-    decoder.reset(new MaxvioPerceptronDecoder(hgDir, hgDirRef, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get()));
+    decoder.reset(new MaxvioPerceptronDecoder(hgDir, hgDirRef, referenceFiles, initDenseSize, streaming, no_shuffle, safe_hope, hgPruning, wv, scorer.get(), readRef, readHyp));
   } else {
     UTIL_THROW(util::Exception, "Unknown batch mira type: '" << type << "'");
   }

@@ -81,6 +81,8 @@ public:
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats)
   = 0;
 
+  virtual void MaxModelCurrSent(const MiraWeightVector& wv, PerceptronData* Perceptron) {}
+
   /** Calculate bleu on training set */
   ValType Evaluate(const AvgWeightVector& wv);
 
@@ -174,7 +176,8 @@ public:
     bool safe_hope,
     size_t hg_pruning,
     const MiraWeightVector& wv,
-    Scorer* scorer_
+    Scorer* scorer_,
+    bool readRef, bool readHyp
   );
 
   virtual void reset();
@@ -188,13 +191,15 @@ public:
   );
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
+  void MaxModelCurrSent(const MiraWeightVector& wv, PerceptronData* Perceptron);
   void ReadAGraph(size_t sentenceId, const std::string& hypergraphDir, Graph* graph, const SparseVector& weights);
 
 private:
   size_t num_dense_;
   //maps sentence Id to graph ptr
-  //typedef std::map<size_t, boost::shared_ptr<Graph> > GraphColl;
-  //GraphColl graphs_;
+  typedef std::map<size_t, boost::shared_ptr<Graph> > GraphColl;
+  GraphColl graphs_ref;
+  GraphColl graphs_hyp;
   std::vector<size_t> sentenceIds_;
   std::vector<size_t>::const_iterator sentenceIdIter_;
   ReferenceSet references_;
@@ -202,6 +207,8 @@ private:
   std::string hypergraphDirHyp;
   std::string hypergraphDirRef;
   size_t hg_pruning;
+  bool readRef_;
+  bool readHyp_;
 };
 
 };

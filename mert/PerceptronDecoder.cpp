@@ -387,12 +387,12 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
   bool safe_hope,
   size_t hg_pruning,
   const MiraWeightVector& wv,
-  Scorer* scorer
+  Scorer* scorer, bool readRef, bool readHyp
 ) :
   num_dense_(num_dense),
   hypergraphDirHyp (hypergraphDir),
   hypergraphDirRef (hypergraphDirRef),
-  hg_pruning (hg_pruning)
+  hg_pruning (hg_pruning), readRef_ (readRef), readHyp_(readHyp)
 {
 
   UTIL_THROW_IF(streaming, util::Exception, "Streaming not currently supported for maxvio");
@@ -401,28 +401,74 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
   UTIL_THROW_IF(!referenceFiles.size(), util::Exception, "No reference files supplied");
   references_.Load(referenceFiles, vocab_);
 
-  //SparseVector weights;
-  //wv.ToSparse(&weights);
+  SparseVector weights;
+  wv.ToSparse(&weights, num_dense);
   scorer_ = scorer;
 
   static const string kWeights = "weights";
   fs::directory_iterator dend;
   size_t fileCount = 0;
 
-  cerr << "counting  hypergraphs" << endl;
+  cerr << "counting  ref hypergraphs" << endl;
   for (fs::directory_iterator di(hypergraphDirRef); di != dend; ++di) {
     const fs::path& hgpath = di->path();
     if (hgpath.filename() == kWeights) continue;
 
-    /*Graph graph(vocab_);
-    size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
-    util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
-    util::FilePiece file(fd.release());
-    ReadGraph(file,graph);*/
+    //  cerr << "Reading " << hgpath.filename() << endl;
+    if (readRef) {
+      Graph graph(vocab_);
+      size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
+      util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
+      //util::FilePiece file(di->path().string().c_str());
+      util::FilePiece file(fd.release());
+      ReadGraph(file,graph);
 
+      //cerr << "ref length " << references_.Length(id) << endl;
+      size_t edgeCount = hg_pruning * references_.Length(id);
+      boost::shared_ptr<Graph> prunedGraph;
+      prunedGraph.reset(new Graph(vocab_));
+      graph.Prune(prunedGraph.get(), weights, edgeCount);
+      graphs_ref[id] = prunedGraph;
+      // cerr << "Pruning to v=" << graphs_[id]->VertexSize() << " e=" << graphs_[id]->EdgeSize()  << endl;
+    }
     ++fileCount;
+    if (fileCount % 10 == 0) cerr << ".";
+    if (fileCount % 400 ==  0) cerr << " [count=" << fileCount << "]\n";
+
+    //++fileCount;
   }
   cerr << endl << "Done" << endl;
+
+
+  if (readHyp) {
+    cerr << "counting  hyp hypergraphs" << endl;
+    for (fs::directory_iterator di(hypergraphDir); di != dend; ++di) {
+      const fs::path& hgpath = di->path();
+      if (hgpath.filename() == kWeights) continue;
+
+      //  cerr << "Reading " << hgpath.filename() << endl;
+      Graph graph(vocab_);
+      size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
+      util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
+      //util::FilePiece file(di->path().string().c_str());
+      util::FilePiece file(fd.release());
+      ReadGraph(file,graph);
+
+      //cerr << "ref length " << references_.Length(id) << endl;
+      size_t edgeCount = hg_pruning * references_.Length(id);
+      boost::shared_ptr<Graph> prunedGraph;
+      prunedGraph.reset(new Graph(vocab_));
+      graph.Prune(prunedGraph.get(), weights, edgeCount);
+      graphs_hyp[id] = prunedGraph;
+      // cerr << "Pruning to v=" << graphs_[id]->VertexSize() << " e=" << graphs_[id]->EdgeSize()  << endl;
+      ++fileCount;
+      if (fileCount % 10 == 0) cerr << ".";
+      if (fileCount % 400 ==  0) cerr << " [count=" << fileCount << "]\n";
+
+      //++fileCount;
+    }
+    cerr << endl << "Done" << endl;
+  }
 
   sentenceIds_.resize(fileCount);
   for (size_t i = 0; i < fileCount; ++i) sentenceIds_[i] = i;
@@ -481,10 +527,21 @@ void MaxvioPerceptronDecoder::Perceptron(
   SparseVector weights;
   wv.ToSparse(&weights, num_dense_);
 
-  Graph graphHyp(vocab_);
-  ReadAGraph(sentenceId, hypergraphDirHyp, &graphHyp, weights);
-  Graph graphRef(vocab_);
-  ReadAGraph(sentenceId, hypergraphDirRef, &graphRef, weights);
+  Graph* graphHyp = new Graph(vocab_);
+  Graph* graphRef = new Graph(vocab_);
+
+  if (!readHyp_) {
+    //Graph graphHyp(vocab_);
+    ReadAGraph(sentenceId, hypergraphDirHyp, graphHyp, weights);
+  } else {
+    graphHyp = &(*graphs_hyp[sentenceId]);
+  }
+  if (!readRef_) {
+    //Graph graphRef(vocab_);
+    ReadAGraph(sentenceId, hypergraphDirRef, graphRef, weights);
+  } else {
+    graphRef = &(*graphs_ref[sentenceId]);
+  }
 
   //SparseVector weights;
   //wv.ToSparse(&weights);
@@ -495,8 +552,8 @@ void MaxvioPerceptronDecoder::Perceptron(
   for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
 
     //Model decode
-    Viterbi(graphHyp, weights, 0, references_, sentenceId, backgroundBleu, hypVio);
-    Viterbi(graphRef, weights, 0, references_, sentenceId, backgroundBleu, refVio);
+    Viterbi(*graphHyp, weights, 0, references_, sentenceId, backgroundBleu, hypVio);
+    Viterbi(*graphRef, weights, 0, references_, sentenceId, backgroundBleu, refVio);
 
     break;
   }
@@ -565,7 +622,7 @@ void MaxvioPerceptronDecoder::Perceptron(
   //Only C++11
   //Perceptron->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
   //vector<ValType> fearStats(scorer_->NumberOfScores());
-  size_t size = graphHyp.GetVertex(graphHyp.VertexSize()-1).SourceCovered();
+  size_t size = graphHyp->GetVertex(graphHyp->VertexSize()-1).SourceCovered();
   Range fullRange(0, size-1);
   //modelHypo = hypVio.find(Range(0,size-1))->second;
   //hopeHypo = refVio.find(Range(0,size-1))->second;
@@ -610,6 +667,29 @@ void MaxvioPerceptronDecoder::Perceptron(
   Perceptron->hopeModelEqual = Perceptron->hopeModelEqual && (Perceptron->modelFeatures == Perceptron->hopeFeatures);*/
 }
 
+void MaxvioPerceptronDecoder::MaxModelCurrSent(const MiraWeightVector& wv, PerceptronData* Perceptron)
+{
+  assert(!finished());
+  HgHypothesis bestHypo;
+  size_t sentenceId = *sentenceIdIter_;
+  SparseVector weights;
+  wv.ToSparse(&weights, num_dense_);
+  vector<ValType> bg(scorer_->NumberOfScores());
+  //cerr << "Calculating bleu on " << sentenceId << endl;
+  if (!readHyp_) {
+    Graph graphHyp(vocab_);
+    ReadAGraph(sentenceId, hypergraphDirHyp, &graphHyp, weights);
+    Viterbi(graphHyp, weights, 0, references_, sentenceId, bg, &bestHypo);
+  } else {
+    Viterbi(*(graphs_hyp[sentenceId]), weights, 0, references_, sentenceId, bg, &bestHypo);
+  }
+
+  Perceptron->modelStats.reserve(scorer_->NumberOfScores());
+  for (size_t i = 0; i < scorer_->NumberOfScores(); ++i) {
+    Perceptron->modelStats.push_back(bestHypo.bleuStats[i]);
+  }
+}
+
 void MaxvioPerceptronDecoder::MaxModel(const AvgWeightVector& wv, vector<ValType>* stats)
 {
   assert(!finished());
@@ -619,9 +699,13 @@ void MaxvioPerceptronDecoder::MaxModel(const AvgWeightVector& wv, vector<ValType
   wv.ToSparse(&weights, num_dense_);
   vector<ValType> bg(scorer_->NumberOfScores());
   //cerr << "Calculating bleu on " << sentenceId << endl;
-  Graph graphHyp(vocab_);
-  ReadAGraph(sentenceId, hypergraphDirHyp, &graphHyp, weights);
-  Viterbi(graphHyp, weights, 0, references_, sentenceId, bg, &bestHypo);
+  if (!readHyp_) {
+    Graph graphHyp(vocab_);
+    ReadAGraph(sentenceId, hypergraphDirHyp, &graphHyp, weights);
+    Viterbi(graphHyp, weights, 0, references_, sentenceId, bg, &bestHypo);
+  } else {
+    Viterbi(*(graphs_hyp[sentenceId]), weights, 0, references_, sentenceId, bg, &bestHypo);
+  }
   stats->resize(bestHypo.bleuStats.size());
   /*
   for (size_t i = 0; i < bestHypo.text.size(); ++i) {
