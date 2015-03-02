@@ -58,6 +58,7 @@ void SparseVector::set(const string& name, FeatureStatsType value)
   } else {
     id = name2id_iter->second;
   }
+  assert(m_id_to_name.size() > id);
   m_fvector[id] = value;
 }
 

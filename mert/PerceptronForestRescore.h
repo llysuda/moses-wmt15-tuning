@@ -143,6 +143,12 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
     if (!flag)
       continue;
 
+    /*vector<size_t> feats = bestHypo.featureVector.feats();
+    for(size_t i = 0; i < feats.size(); i++) {
+      //assert(feats[i] < SparseVector::m_id_to_name.size());
+      SparseVector::decode(feats[i]);
+    }*/
+
     // update BLEU
     bestHypo.bleuStats.resize(kBleuNgramOrder*2+1);
     NgramCounter counts;
@@ -182,10 +188,14 @@ void Viterbi(const Graph& graph, const SparseVector& weights, float bleuWeight, 
   /*cerr << "BEGIN" << endl;
   map<Range, HgHypothesis >::iterator iter = bestHypos.begin();
   for(; iter != bestHypos.end(); iter++) {
-    iter->second.featureVector.write(cerr, " "); cerr << endl;
+    vector<size_t> feats = iter->second.featureVector.feats();
+    for(size_t i = 0; i < feats.size(); i++) {
+      //assert(feats[i] < SparseVector::m_id_to_name.size());
+      SparseVector::decode(feats[i]);
+    }
   }
-  cerr << "END" << endl;
-  exit(1);*/
+  cerr << "END" << endl;*/
+  //exit(1);
 
   //expand back pointers
 

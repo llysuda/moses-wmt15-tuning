@@ -219,7 +219,7 @@ int main(int argc, char** argv)
   }
 
   MiraWeightVector wv(initParams);
-  MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
+  //MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
 
   // Initialize scorer
   if(sctype != "BLEU" && type == "hypergraph") {
@@ -262,6 +262,23 @@ int main(int argc, char** argv)
       if (!hfd.hopeModelEqual && hfd.hopeBleu  > hfd.modelBleu) {
         // Vector difference
         MiraFeatureVector diff = hfd.hopeFeatures - hfd.modelFeatures;
+
+        /*for(size_t i = 0; i < hfd.hopeFeatures.size(); i++) {
+          //assert(feats[i] < SparseVector::m_id_to_name.size());
+          SparseVector::decode(hfd.hopeFeatures.feat(i));
+        }
+
+        for(size_t i = 0; i < hfd.modelFeatures.size(); i++) {
+          //assert(feats[i] < SparseVector::m_id_to_name.size());
+          SparseVector::decode(hfd.modelFeatures.feat(i));
+        }
+
+        for(size_t i = 0; i < diff.size(); i++) {
+          //assert(feats[i] < SparseVector::m_id_to_name.size());
+          SparseVector::decode(diff.feat(i));
+        }*/
+
+
         // Bleu difference
         //assert(hfd.hopeBleu + 1e-8 >= hfd.fearBleu);
         ValType delta = hfd.hopeBleu - hfd.modelBleu;
@@ -287,10 +304,12 @@ int main(int argc, char** argv)
         //cerr << "diff: " << diff << endl;
 
         if (diff_score < 0) {
+
           wv.update(diff,1.0);
-          wv2.update(diff,1.0*totalCount);
+          //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;
+
         }
 
         // Update BLEU statistics
