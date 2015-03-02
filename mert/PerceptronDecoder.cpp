@@ -546,8 +546,8 @@ void MaxvioPerceptronDecoder::Perceptron(
   Range fullRange(0, size-1);
   //modelHypo = hypVio.find(Range(0,size-1))->second;
   //hopeHypo = refVio.find(Range(0,size-1))->second;
-  const HgHypothesis& modelHypo = hypVio.find(bestr)->second;
-  const HgHypothesis& hopeHypo = refVio.find(bestr)->second;
+  const HgHypothesis& modelHypo = hypVio.find(fullRange)->second;
+  const HgHypothesis& hopeHypo = refVio.find(fullRange)->second;
 
   Perceptron->hopeStats.reserve(scorer_->NumberOfScores());
   Perceptron->modelStats.reserve(scorer_->NumberOfScores());
