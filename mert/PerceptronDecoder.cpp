@@ -625,10 +625,12 @@ void MaxvioPerceptronDecoder::Perceptron(
     }
   }
 
-  if (bestr.first == 0 && bestr.second == 0) {
+  if (bestr.second - bestr.first <= 1) {
     Perceptron->hopeModelEqual = true;
     return;
   }
+
+  //cerr << "MaxVio Range: " << bestr.first << " " << bestr.second << endl;
 
   //modelFeatures, hopeFeatures and fearFeatures
   Perceptron->modelFeatures = MiraFeatureVector((*hypVio.find(bestr)->second).featureVector, num_dense_);

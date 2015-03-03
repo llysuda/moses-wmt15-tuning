@@ -317,15 +317,15 @@ int main(int argc, char** argv)
 
         }
 
-        PerceptronData hfd2;
-        decoder->MaxModelCurrSent(wv,&hfd2);
+        //PerceptronData hfd2;
+        //decoder->MaxModelCurrSent(wv,&hfd2);
         // Update BLEU statistics
         for(size_t k=0; k<bg.size(); k++) {
           bg[k]*=decay;
-          //if(model_bg)
-            bg[k]+=hfd2.modelStats[k];
-          //else
-          //  bg[k]+=hfd.hopeStats[k];
+          if(model_bg)
+            bg[k]+=hfd.modelStats[k];
+          else
+            bg[k]+=hfd.hopeStats[k];
         }
       }
       iNumExamples++;
