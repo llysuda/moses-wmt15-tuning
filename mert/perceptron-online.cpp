@@ -165,6 +165,7 @@ int main(int argc, char** argv)
   string decoderCmd = "";
   bool readRef = false;
   bool readHyp = false;
+  bool avgPerceptron = false;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -193,6 +194,7 @@ int main(int argc, char** argv)
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("mosesargs", po::value<string>(&mosesargs), "decoder args")
   ("read-ref", po::value(&readRef)->zero_tokens()->default_value(false), "read ref hypergraph into memory")
+  ("avg", po::value(&avgPerceptron)->zero_tokens()->default_value(false), "output averaged perceptron")
   ;
 
   po::options_description cmdline_options;
@@ -308,7 +310,7 @@ int main(int argc, char** argv)
   MiraWeightVector wv(initParams);
   //SparseVector sv;
   //wv.ToSparse(&sv);
-  //MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
+  MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
 
   // Initialize scorer
   if(sctype != "BLEU" && type == "hypergraph") {
@@ -444,9 +446,11 @@ int main(int argc, char** argv)
 
     // Evaluate current average weights
 
-    //SparseVector svec;
-    //wv2.ToSparse(&svec);
-    //wv.update(MiraFeatureVector(svec,initDenseSize), 1.0/totalCount);
+    if (avgPerceptron) {
+      SparseVector svec;
+      wv2.ToSparse(&svec, initDenseSize);
+      wv.update(MiraFeatureVector(svec,initDenseSize), 1.0/totalCount);
+    }
 
     AvgWeightVector avg = wv.avg();
     avg.noavg = true;
