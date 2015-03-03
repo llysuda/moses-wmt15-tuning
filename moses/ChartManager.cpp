@@ -307,7 +307,7 @@ void ChartManager::OutputBest(OutputCollector *collector) const
 
   if (!StaticData::Instance().GetReachableSpanPair()) {
     const ChartHypothesis *bestHypo = GetBestHypothesis();
-    if (collector && bestHypo) {
+    if (collector) {
       const size_t translationId = m_source.GetTranslationId();
       const ChartHypothesis *bestHypo = GetBestHypothesis();
       OutputBestHypo(collector, bestHypo, translationId);
