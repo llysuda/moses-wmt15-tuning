@@ -245,6 +245,7 @@ void Graph::Prune(Graph* pNewGraph, const SparseVector& weights, size_t minEdgeC
     oldIdToNew[*i] = vi;
     Vertex* vertex = newGraph.NewVertex();
     vertex->SetSourceCovered(vertices_[*i].SourceCovered());
+    vertex->SetStartEndPos(vertices_[*i].startPos, vertices_[*i].endPos);
   }
 
   for (set<const Edge*>::const_iterator i = retainedEdges.begin(); i != retainedEdges.end(); ++i) {

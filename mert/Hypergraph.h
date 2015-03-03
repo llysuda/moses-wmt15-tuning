@@ -196,6 +196,11 @@ public:
     sourceCovered_ = sourceCovered;
   }
 
+  void SetStartEndPos(size_t start, size_t end) {
+    startPos = start;
+    endPos = end;
+  }
+
   const std::vector<const Edge*>& GetIncoming() const {
     return incoming_;
   }

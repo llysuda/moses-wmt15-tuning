@@ -417,6 +417,9 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
     //  cerr << "Reading " << hgpath.filename() << endl;
     if (readRef) {
       Graph graph(vocab_);
+      //boost::shared_ptr<Graph> prunedGraph;
+      //prunedGraph.reset(new Graph(vocab_));
+
       size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
       util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
       //util::FilePiece file(di->path().string().c_str());
@@ -425,11 +428,23 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
 
       //cerr << "ref length " << references_.Length(id) << endl;
       size_t edgeCount = hg_pruning * references_.Length(id);
+
+      if (edgeCount == 0) {
+        edgeCount = std::numeric_limits<size_t>::max();
+      }
+
       boost::shared_ptr<Graph> prunedGraph;
       prunedGraph.reset(new Graph(vocab_));
       graph.Prune(prunedGraph.get(), weights, edgeCount);
       graphs_ref[id] = prunedGraph;
       // cerr << "Pruning to v=" << graphs_[id]->VertexSize() << " e=" << graphs_[id]->EdgeSize()  << endl;
+
+      /*for(size_t i = 0; i < (*prunedGraph).VertexSize(); i++) {
+        const Vertex& vi = (*prunedGraph).GetVertex(i);
+        cerr << vi.startPos << " " << vi.endPos << endl;
+      }
+      exit(1);*/
+
     }
     ++fileCount;
     if (fileCount % 10 == 0) cerr << ".";
@@ -449,6 +464,10 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
 
       //  cerr << "Reading " << hgpath.filename() << endl;
       Graph graph(vocab_);
+
+      //boost::shared_ptr<Graph> prunedGraph;
+      //prunedGraph.reset(new Graph(vocab_));
+
       size_t id = boost::lexical_cast<size_t>(hgpath.stem().string());
       util::scoped_fd fd(util::OpenReadOrThrow(hgpath.string().c_str()));
       //util::FilePiece file(di->path().string().c_str());
@@ -457,6 +476,11 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
 
       //cerr << "ref length " << references_.Length(id) << endl;
       size_t edgeCount = hg_pruning * references_.Length(id);
+
+      if (edgeCount == 0) {
+        edgeCount = std::numeric_limits<size_t>::max();
+      }
+
       boost::shared_ptr<Graph> prunedGraph;
       prunedGraph.reset(new Graph(vocab_));
       graph.Prune(prunedGraph.get(), weights, edgeCount);
@@ -575,9 +599,9 @@ void MaxvioPerceptronDecoder::Perceptron(
   //size_t size = hypVio.size();
   //assert(size == refVio.size());
 
-  for(VioColl::const_iterator hi = hypVio.begin(); hi != hypVio.end(); ++hi) {
-    VioColl::const_iterator ri = refVio.find(hi->first);
-    if (ri == refVio.end())
+  for(VioColl::const_iterator ri = refVio.begin(); ri != refVio.end(); ++ri) {
+    VioColl::const_iterator hi = hypVio.find(ri->first);
+    if (hi == hypVio.end())
       continue;
 
     float scoreHyp = inner_product((*hi->second).featureVector, weights);
