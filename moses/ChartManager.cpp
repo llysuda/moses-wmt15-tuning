@@ -887,7 +887,8 @@ void ChartManager::OutputReachableHypo(OutputCollector *collector, size_t transl
           continue;
 
         out << m_source.GetTranslationId() << " ||| ";
-        out << start << " ||| " << end << " ||| ";
+        out << start << " ||| ";
+        out << end << " ||| ";
 
         const std::vector<FactorType> inputFactorOrder = StaticData::Instance().GetInputFactorOrder();
         string srcoutput = srcPhrase.GetStringRep(inputFactorOrder);
