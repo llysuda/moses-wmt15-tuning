@@ -342,7 +342,7 @@ $filtercmd = File::Spec->catfile($SCRIPTS_ROOTDIR, "training", "filter-model-giv
 
 # WHY ... ! ___FILTER_PHRASE_TABLE ??? This doesn't make sense! [UG]
 # if ( ! -x $filtercmd && ! $___FILTER_PHRASE_TABLE) {
-if ( ! -x $filtercmd && $___FILTER_PHRASE_TABLE) {
+if ( ! -x $filtercmd && ! $___FILTER_PHRASE_TABLE) {
   warn "Filtering command not found: $filtercmd.";
   warn "Use --filtercmd=PATH to specify a valid one or --no-filter-phrase-table";
   exit 1;
