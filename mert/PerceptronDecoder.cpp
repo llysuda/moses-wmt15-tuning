@@ -488,11 +488,11 @@ MaxvioPerceptronDecoder::MaxvioPerceptronDecoder
       // cerr << "Pruning to v=" << graphs_[id]->VertexSize() << " e=" << graphs_[id]->EdgeSize()  << endl;
       ++fileCount2;
       if (fileCount2 % 10 == 0) cerr << ".";
-      if (fileCount2 % 400 ==  0) cerr << " [count=" << fileCount << "]\n";
+      if (fileCount2 % 400 ==  0) cerr << " [count=" << fileCount2 << "]\n";
 
       //++fileCount;
     }
-    cerr << endl << "Done" << endl;
+    cerr << fileCount2 << endl << "Done" << endl;
 
     assert(fileCount==fileCount2);
   }
