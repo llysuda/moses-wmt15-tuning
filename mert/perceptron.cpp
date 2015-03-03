@@ -82,6 +82,7 @@ int main(int argc, char** argv)
 
   bool readRef = false;
   bool readHyp = false;
+  bool avgPerceptron = false;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -111,6 +112,7 @@ int main(int argc, char** argv)
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("read-ref", po::value(&readRef)->zero_tokens()->default_value(false), "read ref hypergraph into memory")
   ("read-hyp", po::value(&readHyp)->zero_tokens()->default_value(false), "read hyp hypergraph into memory")
+  ("avg", po::value(&avgPerceptron)->zero_tokens()->default_value(false), "output averaged perceptron")
   ;
 
   po::options_description cmdline_options;
@@ -224,7 +226,7 @@ int main(int argc, char** argv)
   }
 
   MiraWeightVector wv(initParams);
-  //MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
+  MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
 
   // Initialize scorer
   if(sctype != "BLEU" && type == "hypergraph") {
@@ -311,10 +313,10 @@ int main(int argc, char** argv)
         if (diff_score < 0) {
 
           wv.update(diff,1.0);
-          //wv2.update(diff,1.0*totalCount);
+          wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;
-
+          ++totalCount;
         }
 
         //PerceptronData hfd2;
@@ -330,7 +332,7 @@ int main(int argc, char** argv)
       }
       iNumExamples++;
       ++sentenceIndex;
-      ++totalCount;
+
       if (streaming_out)
         cout << wv << endl;
     }
@@ -340,9 +342,11 @@ int main(int argc, char** argv)
 
     // Evaluate current average weights
 
-    //SparseVector svec;
-    //wv2.ToSparse(&svec);
-    //wv.update(MiraFeatureVector(svec,initDenseSize), 1.0/totalCount);
+    if (avgPerceptron) {
+      SparseVector svec;
+      wv2.ToSparse(&svec, initDenseSize);
+      wv.update(MiraFeatureVector(svec,initDenseSize), 1.0/totalCount);
+    }
 
     AvgWeightVector avg = wv.avg();
     avg.noavg = true;
