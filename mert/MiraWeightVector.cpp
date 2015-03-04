@@ -115,6 +115,17 @@ void MiraWeightVector::ToSparse(SparseVector* sparse, size_t denseSize) const
   }
 }
 
+void MiraWeightVector::ToSparseFull(SparseVector* sparse, size_t denseSize) const
+{
+  for (size_t i = 0; i < m_weights.size(); ++i) {
+    if (i < denseSize) {
+      sparse->set(i,m_weights[i]);
+    } else {
+       sparse->set(i-denseSize,m_weights[i]);
+    }
+  }
+}
+
 /**
  * Make sure everyone's total is up-to-date
  */

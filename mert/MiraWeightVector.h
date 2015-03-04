@@ -68,6 +68,7 @@ public:
    **/
   void ToSparse(SparseVector* sparse) const;
   void ToSparse(SparseVector* sparse, size_t denseSize) const;
+  void ToSparseFull(SparseVector* sparse, size_t denseSize) const;
 
   friend class AvgWeightVector;
 

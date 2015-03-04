@@ -98,12 +98,14 @@ void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& s
 
     if (pos.second - pos.first == 1) {
       denseScore[pos.first] = svec.get(name);
+      tuneMap[name] = true;
     } else if (pos.second > pos.second + 1) {
       size_t feature_ctr = 1;
       for(size_t idx = pos.first; idx < pos.second; ++idx,++feature_ctr) {
         stringstream namestr;
         namestr << name << "_" << feature_ctr;
         denseScore[idx] = svec.get(namestr.str());
+        tuneMap[namestr.str()] = true;
       }
     }
   }
@@ -127,7 +129,7 @@ void UpdateDecoderWeights(const MiraWeightVector& wv, size_t denseSize) {
   StaticData& staticData = StaticData::InstanceNonConst();
   const ScoreComponentCollection& weights = staticData.GetAllWeights();
   cerr << weights << endl;
-  ScoreComponentCollection update(weights);
+  ScoreComponentCollection update;
   SparseVec2ScoreComp(wv, update, denseSize);
   cerr << wv << endl;
   staticData.SetAllWeights(update);
