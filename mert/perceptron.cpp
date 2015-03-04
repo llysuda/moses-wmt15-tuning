@@ -78,11 +78,11 @@ int main(int argc, char** argv)
   bool model_bg = false; // Use model for background corpus
   bool verbose = false; // Verbose updates
   bool safe_hope = false; // Model score cannot have more than BLEU_RATIO times more influence than BLEU
-  size_t hgPruning = 50; //prune hypergraphs to have this many edges per reference word
+  size_t hgPruning = 0; //prune hypergraphs to have this many edges per reference word
 
   bool readRef = false;
   bool readHyp = false;
-  bool avgPerceptron = false;
+  bool noavg = false;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("read-ref", po::value(&readRef)->zero_tokens()->default_value(false), "read ref hypergraph into memory")
   ("read-hyp", po::value(&readHyp)->zero_tokens()->default_value(false), "read hyp hypergraph into memory")
-  ("avg", po::value(&avgPerceptron)->zero_tokens()->default_value(false), "output averaged perceptron")
+  ("noavg", po::value(&noavg)->zero_tokens()->default_value(false), "output averaged perceptron")
   ;
 
   po::options_description cmdline_options;
@@ -349,7 +349,7 @@ int main(int argc, char** argv)
     }*/
 
     AvgWeightVector avg = wv.avg();
-    avg.noavg = !avgPerceptron;
+    avg.noavg = noavg;
     ValType bleu = decoder->Evaluate(avg);
     cerr << ", BLEU = " << bleu << endl;
 

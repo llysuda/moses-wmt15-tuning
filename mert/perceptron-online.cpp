@@ -87,7 +87,7 @@ void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& s
   // dense features
   map<string, pair<size_t, size_t> > nameIndexMap = score.GetCoreNameIndexes();
   map<string, bool > tuneMap = score.GetTunableMap();
-  std::valarray<float> denseScore(score.getCoreFeatures());
+  std::valarray<float> denseScore(StaticData::Instance().GetAllWeights().getCoreFeatures());
   for(map<string, pair<size_t, size_t> >::const_iterator iter = nameIndexMap.begin();
       iter != nameIndexMap.end(); ++iter) {
     string name = iter->first;
@@ -158,14 +158,14 @@ int main(int argc, char** argv)
   bool model_bg = false; // Use model for background corpus
   bool verbose = false; // Verbose updates
   bool safe_hope = false; // Model score cannot have more than BLEU_RATIO times more influence than BLEU
-  size_t hgPruning = 50; //prune hypergraphs to have this many edges per reference word
+  size_t hgPruning = 0; //prune hypergraphs to have this many edges per reference word
 
   string mosesargs;
   string inputFile;
   string decoderCmd = "";
   bool readRef = false;
   bool readHyp = false;
-  bool avgPerceptron = false;
+  bool noavg = false;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -194,7 +194,7 @@ int main(int argc, char** argv)
   ("hg-prune", po::value<size_t>(&hgPruning), "Prune hypergraphs to have this many edges per reference word")
   ("mosesargs", po::value<string>(&mosesargs), "decoder args")
   ("read-ref", po::value(&readRef)->zero_tokens()->default_value(false), "read ref hypergraph into memory")
-  ("avg", po::value(&avgPerceptron)->zero_tokens()->default_value(false), "output averaged perceptron")
+  ("noavg", po::value(&noavg)->zero_tokens()->default_value(false), "output averaged perceptron")
   ;
 
   po::options_description cmdline_options;
@@ -453,7 +453,7 @@ int main(int argc, char** argv)
     }*/
 
     AvgWeightVector avg = wv.avg();
-    avg.noavg = !avgPerceptron;
+    avg.noavg = noavg;
     ValType bleu = decoder->Evaluate(avg);
     //cerr << ", BLEU = " << bleu << endl;
 

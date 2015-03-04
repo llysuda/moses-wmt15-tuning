@@ -166,7 +166,7 @@ my $___DEV_SYMAL = undef;
 my $dev_symal_abs = undef;
 my $working_dir_abs = undef;
 
-my $normalize = 0;
+my $normalize = 1;
 my $ONLINE = 0;
 my $MOSES_ARGS = undef;
 my $hypergraph_dir_ref = "";
@@ -228,7 +228,7 @@ GetOptions(
   "promix-table=s" => \@__PROMIX_TABLES,
   "threads=i" => \$__THREADS,
   "spe-symal=s" => \$___DEV_SYMAL,
-  "norm" => \$normalize,
+  "norm!" => \$normalize,
   "online" => \$ONLINE,
   "maxvio" => \$MAXVIO,
   "hg-dir-ref=s" => \$hypergraph_dir_ref
