@@ -338,7 +338,7 @@ int main(int argc, char** argv)
   //  cerr << "Initial BLEU = " << decoder->Evaluate(wv.avg()) << endl;
   ValType bestBleu = 0;
   int totalCount = 1;
- // for(int j=0; j<n_iters; j++) {
+  for(int j=0; j<n_iters; j++) {
 
     ////
     ////   init moses for online decoding
@@ -446,19 +446,19 @@ int main(int argc, char** argv)
 
     // Evaluate current average weights
 
-    if (avgPerceptron) {
+    /*if (avgPerceptron) {
       SparseVector svec;
       wv2.ToSparse(&svec, initDenseSize);
       wv.update(MiraFeatureVector(svec,initDenseSize), 1.0/totalCount);
-    }
+    }*/
 
     AvgWeightVector avg = wv.avg();
-    avg.noavg = true;
+    avg.noavg = !avgPerceptron;
     ValType bleu = decoder->Evaluate(avg);
     //cerr << ", BLEU = " << bleu << endl;
 
-    //if (bleu > bestBleu) {
-    bestBleu = bleu;
+    if (bleu > bestBleu) {
+      bestBleu = bleu;
 
       ostream* out;
       ofstream outFile;
@@ -481,7 +481,7 @@ int main(int argc, char** argv)
         }
       }
       outFile.close();
-   // }
+   }
       cerr << "Best BLEU = " << bestBleu << endl;
   }
 
