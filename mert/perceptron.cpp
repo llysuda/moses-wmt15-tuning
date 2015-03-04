@@ -226,7 +226,7 @@ int main(int argc, char** argv)
   }
 
   MiraWeightVector wv(initParams);
-  MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
+  //MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
 
   // Initialize scorer
   if(sctype != "BLEU" && type == "hypergraph") {
@@ -313,21 +313,21 @@ int main(int argc, char** argv)
         if (diff_score < 0) {
 
           wv.update(diff,1.0);
-          wv2.update(diff,1.0*totalCount);
+          //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;
           ++totalCount;
         }
 
-        PerceptronData hfd2;
-        decoder->MaxModelCurrSent(wv,&hfd2);
+        //PerceptronData hfd2;
+        //decoder->MaxModelCurrSent(wv,&hfd2);
         // Update BLEU statistics
         for(size_t k=0; k<bg.size(); k++) {
           bg[k]*=decay;
-          //if(model_bg)
-            bg[k]+=hfd2.modelStats[k];
-          //else
-          //  bg[k]+=hfd.hopeStats[k];
+          if(model_bg)
+            bg[k]+=hfd.modelStats[k];
+          else
+            bg[k]+=hfd.hopeStats[k];
         }
       }
       iNumExamples++;
@@ -342,14 +342,14 @@ int main(int argc, char** argv)
 
     // Evaluate current average weights
 
-    if (avgPerceptron) {
+    /*if (avgPerceptron) {
       SparseVector svec;
       wv2.ToSparse(&svec, initDenseSize);
       wv.update(MiraFeatureVector(svec,initDenseSize), 1.0/totalCount);
-    }
+    }*/
 
     AvgWeightVector avg = wv.avg();
-    avg.noavg = true;
+    avg.noavg = !avgPerceptron;
     ValType bleu = decoder->Evaluate(avg);
     cerr << ", BLEU = " << bleu << endl;
 
