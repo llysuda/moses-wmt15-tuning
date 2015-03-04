@@ -482,8 +482,10 @@ int main(int argc, char** argv)
       }
       outFile.close();
    }
+  }
       cerr << "Best BLEU = " << bestBleu << endl;
   }
+
 
   // averaged perceptron
   /*SparseVector svec;
