@@ -99,13 +99,15 @@ void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& s
     if (pos.second - pos.first == 1) {
       denseScore[pos.first] = svec.get(name);
       tuneMap[name] = true;
-    } else if (pos.second > pos.second + 1) {
+      //cerr << name << endl;
+    } else if (pos.second > pos.first + 1) {
       size_t feature_ctr = 1;
       for(size_t idx = pos.first; idx < pos.second; ++idx,++feature_ctr) {
         stringstream namestr;
         namestr << name << "_" << feature_ctr;
         denseScore[idx] = svec.get(namestr.str());
         tuneMap[namestr.str()] = true;
+        //cerr << namestr.str() << endl;
       }
     }
   }

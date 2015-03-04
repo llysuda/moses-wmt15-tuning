@@ -610,8 +610,8 @@ void MaxvioPerceptronDecoder::Perceptron(
     float scoreRef = inner_product((*ri->second).featureVector, weights);
 
     //cerr << hi->first.first << " " << hi->first.second << endl;
-    //hi->second.featureVector.write(cerr, " "); cerr << endl;
-    //ri->second.featureVector.write(cerr, " "); cerr << endl;
+    //cerr << scoreHyp << " "; (*hi->second).featureVector.write(cerr, " "); cerr << endl;
+    //cerr << scoreRef << " "; (*ri->second).featureVector.write(cerr, " "); cerr << endl;
 
     /*vector<size_t> feats = ri->second.featureVector.feats();
     for(size_t i = 0; i < feats.size(); i++) {
