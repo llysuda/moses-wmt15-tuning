@@ -87,7 +87,7 @@ void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& s
   // dense features
   map<string, pair<size_t, size_t> > nameIndexMap = score.GetCoreNameIndexes();
   map<string, bool > tuneMap = score.GetTunableMap();
-  std::valarray<float> denseScore(score.getCoreFeatures());
+  std::valarray<float> denseScore(StaticData::Instance().GetAllWeights().getCoreFeatures());
   for(map<string, pair<size_t, size_t> >::const_iterator iter = nameIndexMap.begin();
       iter != nameIndexMap.end(); ++iter) {
     string name = iter->first;
