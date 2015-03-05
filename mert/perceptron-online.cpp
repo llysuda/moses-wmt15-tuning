@@ -82,7 +82,7 @@ char**convert(const vector<std::string> & svec)
 void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& score, size_t denseSize) {
 
   SparseVector svec;
-  wv.ToSparse(&svec, denseSize);
+  wv.ToSparseFull(&svec, denseSize);
 
   // dense features
   map<string, pair<size_t, size_t> > nameIndexMap = score.GetCoreNameIndexes();
