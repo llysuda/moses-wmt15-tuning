@@ -79,10 +79,7 @@ char**convert(const vector<std::string> & svec)
    return arr;
 }
 
-void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& score, size_t denseSize) {
-
-  SparseVector svec;
-  wv.ToSparse(&svec, denseSize);
+void SparseVec2ScoreComp(const SparseVector& svec, ScoreComponentCollection& score, size_t denseSize) {
 
   // dense features
   map<string, pair<size_t, size_t> > nameIndexMap = score.GetCoreNameIndexes();
@@ -130,11 +127,13 @@ void SparseVec2ScoreComp(const MiraWeightVector& wv, ScoreComponentCollection& s
 void UpdateDecoderWeights(const MiraWeightVector& wv, size_t denseSize) {
   StaticData& staticData = StaticData::InstanceNonConst();
   const ScoreComponentCollection& weights = staticData.GetAllWeights();
-  cerr << weights << endl;
-  cerr << wv << endl;
+  //cerr << weights << endl;
+  SparseVector svec;
+  wv.ToSparse(&svec, denseSize);
+  //svec.write(cerr, " "); cerr << endl;
   ScoreComponentCollection update;
-  SparseVec2ScoreComp(wv, update, denseSize);
-  cerr << update << endl;
+  SparseVec2ScoreComp(svec, update, denseSize);
+  //cerr << update << endl;
   staticData.SetAllWeights(update);
   //cerr << staticData.GetAllWeights() << endl;
 }

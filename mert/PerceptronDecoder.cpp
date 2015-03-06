@@ -619,7 +619,7 @@ void MaxvioPerceptronDecoder::Perceptron(
       SparseVector::decode(feats[i]);
     }*/
 
-    if (scoreRef < scoreHyp && scoreHyp-scoreRef > maxvio) {
+    if (scoreRef < scoreHyp && scoreHyp-scoreRef > maxvio && ri->first.second - ri->first.first > 1) {
       bestr = ri->first;
       maxvio = scoreHyp-scoreRef;
       //modelHypo = &(hi->second);
