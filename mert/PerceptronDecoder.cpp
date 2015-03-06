@@ -536,13 +536,14 @@ void MaxvioPerceptronDecoder::ReadAGraph(size_t sentenceId, const string& hyperg
   ReadGraph(file,*graph);
   //return &graph;
 
-  if (hg_pruning > 0) {
-    size_t edgeCount = hg_pruning * references_.Length(sentenceId);
-    boost::shared_ptr<Graph> prunedGraph;
-    prunedGraph.reset(new Graph(vocab_));
-    graph->Prune(prunedGraph.get(), weights, edgeCount);
-    graph = prunedGraph.get();
+  size_t edgeCount = hg_pruning * references_.Length(sentenceId);
+  if (edgeCount == 0) {
+    edgeCount = std::numeric_limits<size_t>::max();
   }
+  boost::shared_ptr<Graph> prunedGraph;
+  prunedGraph.reset(new Graph(vocab_));
+  graph->Prune(prunedGraph.get(), weights, edgeCount);
+  graph = prunedGraph.get();
 }
 
 void MaxvioPerceptronDecoder::Perceptron(
