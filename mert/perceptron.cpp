@@ -69,7 +69,7 @@ int main(int argc, char** argv)
   string hgDirRef;
   int seed;
   string outputFile;
-  float c = 0.01;      // Step-size cap C
+  float c = 1.0;      // Step-size cap C
   float decay = 0.999; // Pseudo-corpus decay \gamma
   int n_iters = 1;    // Max epochs J
   bool streaming = false; // Stream all k-best lists?
@@ -312,7 +312,7 @@ int main(int argc, char** argv)
 
         if (diff_score < 0) {
 
-          wv.update(diff,1.0);
+          wv.update(diff,c);
           //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;
