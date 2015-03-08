@@ -127,13 +127,13 @@ void SparseVec2ScoreComp(const SparseVector& svec, ScoreComponentCollection& sco
 void UpdateDecoderWeights(const MiraWeightVector& wv, size_t denseSize) {
   StaticData& staticData = StaticData::InstanceNonConst();
   const ScoreComponentCollection& weights = staticData.GetAllWeights();
-  //cerr << weights << endl;
+  cerr << weights << endl;
   SparseVector svec;
   wv.ToSparse(&svec, denseSize);
-  //svec.write(cerr, " "); cerr << endl;
+  svec.write(cerr, " "); cerr << endl;
   ScoreComponentCollection update;
   SparseVec2ScoreComp(svec, update, denseSize);
-  //cerr << update << endl;
+  cerr << update << endl;
   staticData.SetAllWeights(update);
   //cerr << staticData.GetAllWeights() << endl;
 }
@@ -314,7 +314,7 @@ int main(int argc, char** argv)
   MiraWeightVector wv(initParams);
   //SparseVector sv;
   //wv.ToSparse(&sv);
-  MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
+  //MiraWeightVector wv2(vector<parameter_t>(initParams.size(), 0.0));
 
   // Initialize scorer
   if(sctype != "BLEU" && type == "hypergraph") {
@@ -421,8 +421,10 @@ int main(int argc, char** argv)
         }*/
 
         if (diff_score < 0) {
-          //cerr << diff << endl;
+          cerr << wv << endl;
+          cerr << diff << endl;
           wv.update(diff,c);
+          cerr << wv << endl;
           UpdateDecoderWeights(wv, initDenseSize);
           //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
