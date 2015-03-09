@@ -636,8 +636,8 @@ void MaxvioPerceptronDecoder::Perceptron(
   //cerr << "MaxVio Range: " << bestr.first << " " << bestr.second << endl;
 
   //modelFeatures, hopeFeatures and fearFeatures
-  Perceptron->modelFeatures = MiraFeatureVector((*hypVio.find(bestr)->second).featureVector, num_dense_);
-  Perceptron->hopeFeatures = MiraFeatureVector((*refVio.find(bestr)->second).featureVector, num_dense_);
+  Perceptron->modelFeatures = MiraFeatureVector((*(hypVio.find(bestr)->second)).featureVector, num_dense_);
+  Perceptron->hopeFeatures = MiraFeatureVector((*(refVio.find(bestr)->second)).featureVector, num_dense_);
   Perceptron->hopeModelEqual = false;
 
   /*for(size_t i = 0; i < Perceptron->hopeFeatures.size(); i++) {
