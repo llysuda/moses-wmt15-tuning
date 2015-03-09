@@ -358,7 +358,7 @@ void HypergraphPerceptronDecoder::MaxModel(const AvgWeightVector& wv, vector<Val
   HgHypothesis bestHypo;
   size_t sentenceId = *sentenceIdIter_;
   SparseVector weights;
-  wv.ToSparse(&weights);
+  wv.ToSparse(&weights, num_dense_);
   vector<ValType> bg(scorer_->NumberOfScores());
   //cerr << "Calculating bleu on " << sentenceId << endl;
   Viterbi(*(graphs_[sentenceId]), weights, 0, references_, sentenceId, bg, &bestHypo);
