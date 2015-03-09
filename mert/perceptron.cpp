@@ -311,10 +311,10 @@ int main(int argc, char** argv)
         //cerr << "diff: " << diff << endl;
 
         if (diff_score < 0) {
-          cerr << wv << endl;
-          cerr << diff << endl;
+          //cerr << wv << endl;
+          //cerr << diff << endl;
           wv.update(diff,c);
-          cerr << wv << endl;
+          //cerr << wv << endl;
           //wv2.update(diff,1.0*totalCount);
           totalLoss+=diff_score;
           iNumUpdates++;
