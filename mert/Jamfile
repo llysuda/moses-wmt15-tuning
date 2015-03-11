@@ -50,6 +50,7 @@ TER/tools.cpp
 TerScorer.cpp
 CderScorer.cpp
 MeteorScorer.cpp
+RedScorer.cpp
 Vocabulary.cpp
 PreProcessFilter.cpp
 SentenceLevelScorer.cpp

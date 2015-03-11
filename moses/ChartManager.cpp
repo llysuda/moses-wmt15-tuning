@@ -886,7 +886,7 @@ void ChartManager::OutputReachableHypo(OutputCollector *collector, size_t transl
         if (outPhrase.GetSize() < MIN_LEN)
           continue;
 
-        out << m_source.GetTranslationId() << " ||| ";
+        out << translationId << " ||| ";
         out << start << " ||| ";
         out << end << " ||| ";
 

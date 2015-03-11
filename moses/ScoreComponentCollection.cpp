@@ -191,10 +191,11 @@ void ScoreComponentCollection::Save(ostream& out, bool multiline) const
   }
 
   const StaticData& staticData = StaticData::Instance();
+  bool onlyTunable = staticData.GetOnlyTunable();
   ScoreIndexMap::const_iterator iter = s_scoreIndexes.begin();
   for (; iter != s_scoreIndexes.end(); ++iter ) {
 
-    if (staticData.GetOnlyTunable() && !iter->first->IsTuneable())
+    if (onlyTunable && !iter->first->IsTuneable())
       continue;
 
     string name = iter->first->GetScoreProducerDescription();

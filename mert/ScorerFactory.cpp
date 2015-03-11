@@ -14,6 +14,8 @@
 #include "HwcmScorer.h"
 #include "Reference.h"
 
+#include "RedScorer.h"
+
 using namespace std;
 
 namespace MosesTuning
@@ -34,6 +36,7 @@ vector<string> ScorerFactory::getTypes()
   types.push_back(string("LRSCORE"));
   types.push_back(string("METEOR"));
   types.push_back(string("HWCM"));
+  types.push_back(string("RED"));
   return types;
 }
 
@@ -60,6 +63,8 @@ Scorer* ScorerFactory::getScorer(const string& type, const string& config)
     return new MeteorScorer(config);
   } else if (type == "HWCM") {
     return new HwcmScorer(config);
+  } else if (type == "RED") {
+    return new RedScorer(config);
   } else {
     if (type.find(',') != string::npos) {
       return new InterpolatedScorer(type, config);
