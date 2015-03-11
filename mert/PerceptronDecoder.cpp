@@ -186,7 +186,7 @@ HypergraphPerceptronDecoder::HypergraphPerceptronDecoder
   references_.Load(referenceFiles, vocab_);
 
   SparseVector weights;
-  wv.ToSparse(&weights);
+  wv.ToSparse(&weights, num_dense);
   scorer_ = scorer;
 
   static const string kWeights = "weights";
@@ -249,7 +249,7 @@ void HypergraphPerceptronDecoder::Perceptron(
 {
   size_t sentenceId = *sentenceIdIter_;
   SparseVector weights;
-  wv.ToSparse(&weights);
+  wv.ToSparse(&weights, num_dense_);
   const Graph& graph = *(graphs_[sentenceId]);
 
   ValType hope_scale = 1.0;
