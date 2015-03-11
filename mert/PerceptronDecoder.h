@@ -55,6 +55,8 @@ struct PerceptronData {
 
   bool PerceptronEqual;
   bool hopeModelEqual;
+
+  int updateCount = 0;
 };
 
 //Abstract base class

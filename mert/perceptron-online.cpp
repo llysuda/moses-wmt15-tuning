@@ -446,7 +446,10 @@ int main(int argc, char** argv)
         if (diff_score < 0) {
           //cerr << wv << endl;
           //cerr << diff << endl;
-          wv.update(diff,c);
+
+          ValType delta = c / hfd.updateCount;
+
+          wv.update(diff, delta);
           //cerr << wv << endl;
           UpdateDecoderWeights(wv, initDenseSize);
           //wv2.update(diff,1.0*totalCount);

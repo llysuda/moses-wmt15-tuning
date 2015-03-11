@@ -559,6 +559,8 @@ void MaxvioPerceptronDecoder::Perceptron(
 
   Perceptron->hopeModelEqual = true;
 
+  int updateCount = 0;
+
   for(int index = 0; index < batch; index++) {
     sentenceId = *sentenceIdIter_ + index;
 
@@ -619,6 +621,7 @@ void MaxvioPerceptronDecoder::Perceptron(
     }
       //Perceptron->hopeModelEqual = true;
       //return;
+    Perceptron->updateCount++;
 
   //modelFeatures, hopeFeatures and fearFeatures
     if (Perceptron->hopeModelEqual) {
