@@ -164,6 +164,64 @@ MiraFeatureVector operator-(const MiraFeatureVector& a, const MiraFeatureVector&
   return MiraFeatureVector(dense,sparseFeats,sparseVals);
 }
 
+MiraFeatureVector operator+(const MiraFeatureVector& a, const MiraFeatureVector& b)
+{
+  // Dense subtraction
+  vector<ValType> dense;
+  if(a.m_dense.size()!=b.m_dense.size()) {
+    cerr << "Mismatching dense vectors passed to MiraFeatureVector subtraction" << endl;
+    exit(1);
+  }
+  for(size_t i=0; i<a.m_dense.size(); i++) {
+    dense.push_back(a.m_dense[i] + b.m_dense[i]);
+  }
+
+  // Sparse subtraction
+  size_t i=0;
+  size_t j=0;
+  vector<ValType> sparseVals;
+  vector<size_t> sparseFeats;
+  while(i < a.m_sparseFeats.size() && j < b.m_sparseFeats.size()) {
+
+    if(a.m_sparseFeats[i] < b.m_sparseFeats[j]) {
+      sparseFeats.push_back(a.m_sparseFeats[i]);
+      sparseVals.push_back(a.m_sparseVals[i]);
+      i++;
+    }
+
+    else if(b.m_sparseFeats[j] < a.m_sparseFeats[i]) {
+      sparseFeats.push_back(b.m_sparseFeats[j]);
+      sparseVals.push_back(b.m_sparseVals[j]);
+      j++;
+    }
+
+    else {
+      ValType newVal  = a.m_sparseVals[i] + b.m_sparseVals[j];
+      if(abs(newVal)>1e-6) {
+        sparseFeats.push_back(a.m_sparseFeats[i]);
+        sparseVals.push_back(newVal);
+      }
+      i++;
+      j++;
+    }
+  }
+
+  while(i<a.m_sparseFeats.size()) {
+    sparseFeats.push_back(a.m_sparseFeats[i]);
+    sparseVals.push_back(a.m_sparseVals[i]);
+    i++;
+  }
+
+  while(j<b.m_sparseFeats.size()) {
+    sparseFeats.push_back(b.m_sparseFeats[j]);
+    sparseVals.push_back(b.m_sparseVals[j]);
+    j++;
+  }
+
+  // Create and return vector
+  return MiraFeatureVector(dense,sparseFeats,sparseVals);
+}
+
 bool operator==(const MiraFeatureVector& a,const MiraFeatureVector& b)
 {
   ValType eps = 1e-8;

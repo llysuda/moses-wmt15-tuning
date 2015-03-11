@@ -74,7 +74,7 @@ public:
   virtual void Perceptron(
     const std::vector<ValType>& backgroundBleu,
     const MiraWeightVector& wv,
-    PerceptronData* Perceptron
+    PerceptronData* Perceptron, int batch=1
   ) = 0;
 
   /** Max score decoding */
@@ -110,7 +110,7 @@ public:
   virtual void Perceptron(
     const std::vector<ValType>& backgroundBleu,
     const MiraWeightVector& wv,
-    PerceptronData* Perceptron
+    PerceptronData* Perceptron, int batch
   );
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
@@ -146,7 +146,7 @@ public:
   virtual void Perceptron(
     const std::vector<ValType>& backgroundBleu,
     const MiraWeightVector& wv,
-    PerceptronData* Perceptron
+    PerceptronData* Perceptron, int batch
   );
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
@@ -187,7 +187,7 @@ public:
   virtual void Perceptron(
     const std::vector<ValType>& backgroundBleu,
     const MiraWeightVector& wv,
-    PerceptronData* Perceptron
+    PerceptronData* Perceptron, int batch
   );
 
   virtual void MaxModel(const AvgWeightVector& wv, std::vector<ValType>* stats);
@@ -209,6 +209,7 @@ private:
   size_t hg_pruning;
   bool readRef_;
   bool readHyp_;
+  int batch;
 };
 
 };

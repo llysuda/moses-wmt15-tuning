@@ -91,7 +91,7 @@ void NbestPerceptronDecoder::reset()
 void NbestPerceptronDecoder::Perceptron(
   const std::vector<ValType>& backgroundBleu,
   const MiraWeightVector& wv,
-  PerceptronData* Perceptron
+  PerceptronData* Perceptron, int batch=1
 )
 {
 
@@ -244,7 +244,7 @@ bool HypergraphPerceptronDecoder::finished()
 void HypergraphPerceptronDecoder::Perceptron(
   const vector<ValType>& backgroundBleu,
   const MiraWeightVector& wv,
-  PerceptronData* Perceptron
+  PerceptronData* Perceptron, int batch=1
 )
 {
   size_t sentenceId = *sentenceIdIter_;
@@ -549,7 +549,7 @@ void MaxvioPerceptronDecoder::ReadAGraph(size_t sentenceId, const string& hyperg
 void MaxvioPerceptronDecoder::Perceptron(
   const vector<ValType>& backgroundBleu,
   const MiraWeightVector& wv,
-  PerceptronData* Perceptron
+  PerceptronData* Perceptron, int batch=1
 )
 {
   size_t sentenceId = *sentenceIdIter_;
@@ -557,151 +557,108 @@ void MaxvioPerceptronDecoder::Perceptron(
   SparseVector weights;
   wv.ToSparse(&weights, num_dense_);
 
-  //Graph* graphHyp = new Graph(vocab_);
-  //Graph* graphRef = new Graph(vocab_);
-  boost::shared_ptr<Graph> graphHyp;
-  boost::shared_ptr<Graph> graphRef;
+  Perceptron->hopeModelEqual = true;
 
-  if (!readHyp_) {
-    graphHyp.reset(new Graph(vocab_));
-    ReadAGraph(sentenceId, hypergraphDirHyp, graphHyp.get(), weights);
-  } else {
-    //graphHyp.reset(graphs_hyp[sentenceId], new Graph(vocab_));
-    graphHyp = graphs_hyp[sentenceId];
-  }
-  if (!readRef_) {
-    graphRef.reset(new Graph(vocab_));
-    ReadAGraph(sentenceId, hypergraphDirRef, graphRef.get(), weights);
-  } else {
-    //graphRef.reset(graphs_ref[sentenceId], new Graph(vocab_));
-    graphRef = graphs_ref[sentenceId];
-  }
+  for(int index = 0; index < batch; index++) {
+    sentenceId = *sentenceIdIter_ + index;
 
-  //SparseVector weights;
-  //wv.ToSparse(&weights);
+    //Graph* graphHyp = new Graph(vocab_);
+    //Graph* graphRef = new Graph(vocab_);
+    boost::shared_ptr<Graph> graphHyp;
+    boost::shared_ptr<Graph> graphRef;
 
-  ValType hope_scale = 1.0;
-
-  VioColl hypVio;
-  VioColl refVio;
-  for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
-
-    //Model decode
-    Viterbi(*(graphHyp), weights, 0, references_, sentenceId, backgroundBleu, hypVio);
-    Viterbi(*(graphRef), weights, 0, references_, sentenceId, backgroundBleu, refVio);
-
-    break;
-  }
-
-  // find the max vio
-  Range bestr(0,0);
-  float maxvio = 0.0;
-
-  //const HgHypothesis* modelHypo;
-  //const HgHypothesis* hopeHypo;
-  //size_t size = hypVio.size();
-  //assert(size == refVio.size());
-
-  for(VioColl::const_iterator ri = refVio.begin(); ri != refVio.end(); ++ri) {
-    VioColl::const_iterator hi = hypVio.find(ri->first);
-    if (hi == hypVio.end())
-      continue;
-
-    float scoreHyp = inner_product((*hi->second).featureVector, weights);
-    float scoreRef = inner_product((*ri->second).featureVector, weights);
-
-    //cerr << hi->first.first << " " << hi->first.second << endl;
-    //cerr << scoreHyp << " "; (*hi->second).featureVector.write(cerr, " "); cerr << endl;
-    //cerr << scoreRef << " "; (*ri->second).featureVector.write(cerr, " "); cerr << endl;
-
-    /*vector<size_t> feats = ri->second.featureVector.feats();
-    for(size_t i = 0; i < feats.size(); i++) {
-      //assert(feats[i] < SparseVector::m_id_to_name.size());
-      SparseVector::decode(feats[i]);
-    }*/
-
-    if (scoreRef < scoreHyp && scoreHyp-scoreRef > maxvio && ri->first.second - ri->first.first > 1) {
-      bestr = ri->first;
-      maxvio = scoreHyp-scoreRef;
-      //modelHypo = &(hi->second);
-      //hopeHypo = &(ri->second);
+    if (!readHyp_) {
+      graphHyp.reset(new Graph(vocab_));
+      ReadAGraph(sentenceId, hypergraphDirHyp, graphHyp.get(), weights);
+    } else {
+      //graphHyp.reset(graphs_hyp[sentenceId], new Graph(vocab_));
+      graphHyp = graphs_hyp[sentenceId];
     }
-  }
+    if (!readRef_) {
+      graphRef.reset(new Graph(vocab_));
+      ReadAGraph(sentenceId, hypergraphDirRef, graphRef.get(), weights);
+    } else {
+      //graphRef.reset(graphs_ref[sentenceId], new Graph(vocab_));
+      graphRef = graphs_ref[sentenceId];
+    }
 
-  if (bestr.second - bestr.first <= 1) {
-    Perceptron->hopeModelEqual = true;
-    return;
-  }
+    ValType hope_scale = 1.0;
 
-  //cerr << "MaxVio Range: " << bestr.first << " " << bestr.second << endl;
+    VioColl hypVio;
+    VioColl refVio;
+    for(size_t safe_loop=0; safe_loop<2; safe_loop++) {
+
+      //Model decode
+      Viterbi(*(graphHyp), weights, 0, references_, sentenceId, backgroundBleu, hypVio);
+      Viterbi(*(graphRef), weights, 0, references_, sentenceId, backgroundBleu, refVio);
+
+      break;
+    }
+
+    // find the max vio
+    Range bestr(0,0);
+    float maxvio = 0.0;
+
+    for(VioColl::const_iterator ri = refVio.begin(); ri != refVio.end(); ++ri) {
+      VioColl::const_iterator hi = hypVio.find(ri->first);
+      if (hi == hypVio.end())
+        continue;
+
+      float scoreHyp = inner_product((*hi->second).featureVector, weights);
+      float scoreRef = inner_product((*ri->second).featureVector, weights);
+
+
+      if (scoreRef < scoreHyp && scoreHyp-scoreRef > maxvio && ri->first.second - ri->first.first > 1) {
+        bestr = ri->first;
+        maxvio = scoreHyp-scoreRef;
+      }
+    }
+
+    if (bestr.second - bestr.first <= 1) {
+      continue;
+    }
+      //Perceptron->hopeModelEqual = true;
+      //return;
 
   //modelFeatures, hopeFeatures and fearFeatures
-  Perceptron->modelFeatures = MiraFeatureVector((*(hypVio.find(bestr)->second)).featureVector, num_dense_);
-  Perceptron->hopeFeatures = MiraFeatureVector((*(refVio.find(bestr)->second)).featureVector, num_dense_);
-  Perceptron->hopeModelEqual = false;
+    if (Perceptron->hopeModelEqual) {
+      Perceptron->modelFeatures = MiraFeatureVector((*(hypVio.find(bestr)->second)).featureVector, num_dense_);
+      Perceptron->hopeFeatures = MiraFeatureVector((*(refVio.find(bestr)->second)).featureVector, num_dense_);
+    } else {
+      Perceptron->modelFeatures = Perceptron->modelFeatures+MiraFeatureVector((*(hypVio.find(bestr)->second)).featureVector, num_dense_);
+      Perceptron->hopeFeatures = Perceptron->hopeFeatures+MiraFeatureVector((*(refVio.find(bestr)->second)).featureVector, num_dense_);
+    }
 
-  /*for(size_t i = 0; i < Perceptron->hopeFeatures.size(); i++) {
-    //assert(feats[i] < SparseVector::m_id_to_name.size());
-    SparseVector::decode(Perceptron->hopeFeatures.feat(i));
-  }
+    //Need to know which are to be mapped to dense features!
 
-  for(size_t i = 0; i < Perceptron->modelFeatures.size(); i++) {
-    //assert(feats[i] < SparseVector::m_id_to_name.size());
-    SparseVector::decode(Perceptron->modelFeatures.feat(i));
-  }*/
+    //Only C++11
+    //Perceptron->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
+    //vector<ValType> fearStats(scorer_->NumberOfScores());
+    size_t size = (*graphHyp).GetVertex((*graphHyp).VertexSize()-1).SourceCovered();
+    Range fullRange(0, size-1);
+    const HgHypothesis& modelHypo = *(hypVio.find(bestr)->second);
+    const HgHypothesis& hopeHypo = *(refVio.find(bestr)->second);
 
-  //Perceptron->hopeBleu = 1.0;
-  //Perceptron->modelBleu = 0.0;
-  //Perceptron->fearFeatures = MiraFeatureVector(fearHypo.featureVector, num_dense_);
+    if (Perceptron->hopeModelEqual) {
+      Perceptron->hopeStats.reserve(scorer_->NumberOfScores());
+      Perceptron->modelStats.reserve(scorer_->NumberOfScores());
+      for (size_t i = 0; i < scorer_->NumberOfScores(); ++i) {
+        Perceptron->modelStats.push_back(modelHypo.bleuStats[i]);
+        Perceptron->hopeStats.push_back(hopeHypo.bleuStats[i]);
+      }
+    } else {
+      for (size_t i = 0; i < scorer_->NumberOfScores(); ++i) {
+        Perceptron->modelStats[i] += modelHypo.bleuStats[i];
+        Perceptron->hopeStats[i] += hopeHypo.bleuStats[i];
+      }
+    }
 
-  //Need to know which are to be mapped to dense features!
-
-  //Only C++11
-  //Perceptron->modelStats.assign(std::begin(modelHypo.bleuStats), std::end(modelHypo.bleuStats));
-  //vector<ValType> fearStats(scorer_->NumberOfScores());
-  size_t size = (*graphHyp).GetVertex((*graphHyp).VertexSize()-1).SourceCovered();
-  Range fullRange(0, size-1);
-  //modelHypo = hypVio.find(Range(0,size-1))->second;
-  //hopeHypo = refVio.find(Range(0,size-1))->second;
-  const HgHypothesis& modelHypo = *(hypVio.find(bestr)->second);
-  const HgHypothesis& hopeHypo = *(refVio.find(bestr)->second);
-
-  Perceptron->hopeStats.reserve(scorer_->NumberOfScores());
-  Perceptron->modelStats.reserve(scorer_->NumberOfScores());
-  for (size_t i = 0; i < scorer_->NumberOfScores(); ++i) {
-    Perceptron->modelStats.push_back(modelHypo.bleuStats[i]);
-    Perceptron->hopeStats.push_back(hopeHypo.bleuStats[i]);
-
-    //fearStats[i] = fearHypo.bleuStats[i];
+    Perceptron->hopeModelEqual = false;
   }
 
   Perceptron->hopeBleu = 1.0;//sentenceLevelBackgroundBleu(Perceptron->hopeStats, backgroundBleu);
-  //Perceptron->fearBleu = sentenceLevelBackgroundBleu(fearStats, backgroundBleu);
   Perceptron->modelBleu = 0.0;//sentenceLevelBackgroundBleu(Perceptron->modelStats, backgroundBleu);
 
-  //If fv and bleu stats are equal, then assume equal
-  /*Perceptron->PerceptronEqual = true; //(Perceptron->hopeBleu - Perceptron->fearBleu) >= 1e-8;
-  if (Perceptron->PerceptronEqual) {
-    for (size_t i = 0; i < fearStats.size(); ++i) {
-      if (fearStats[i] != Perceptron->hopeStats[i]) {
-        Perceptron->PerceptronEqual = false;
-        break;
-      }
-    }
-  }
-  Perceptron->PerceptronEqual = Perceptron->PerceptronEqual && (Perceptron->fearFeatures == Perceptron->hopeFeatures);
-
-  //If fv and bleu stats are equal, then assume equal
-  Perceptron->hopeModelEqual = true; //(Perceptron->hopeBleu - Perceptron->fearBleu) >= 1e-8;
-  if (Perceptron->hopeModelEqual) {
-    for (size_t i = 0; i < Perceptron->modelStats.size(); ++i) {
-      if (Perceptron->modelStats[i] != Perceptron->hopeStats[i]) {
-        Perceptron->hopeModelEqual = false;
-        break;
-      }
-    }
-  }
-  Perceptron->hopeModelEqual = Perceptron->hopeModelEqual && (Perceptron->modelFeatures == Perceptron->hopeFeatures);*/
 }
 
 void MaxvioPerceptronDecoder::MaxModelCurrSent(const MiraWeightVector& wv, PerceptronData* Perceptron)

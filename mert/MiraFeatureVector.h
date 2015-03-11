@@ -43,6 +43,9 @@ public:
   friend MiraFeatureVector operator-(const MiraFeatureVector& a,
                                      const MiraFeatureVector& b);
 
+  friend MiraFeatureVector operator+(const MiraFeatureVector& a,
+                                       const MiraFeatureVector& b);
+
   friend std::ostream& operator<<(std::ostream& o, const MiraFeatureVector& e);
 
   friend bool operator==(const MiraFeatureVector& a,const MiraFeatureVector& b);

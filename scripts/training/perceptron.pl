@@ -978,7 +978,7 @@ while (1) {
     } else {
         $mira_settings .= " --hgdirref $hypergraph_dir_ref ";
         #$mira_settings .= " -mosesini run$run.moses.ini ";
-        $mira_settings .= " --mosesargs \"-only-tunable -output-search-graph-hypergraph true gz -beam-threshold 1e-1000  -f run$run.moses.ini -i $___DEV_F\" ";
+        $mira_settings .= " --mosesargs \"-only-tunable -threads all -output-search-graph-hypergraph true gz -beam-threshold 1e-1000  -f run$run.moses.ini -i $___DEV_F\" ";
     }
     $mira_settings .= join(" ", map {"--reference $_"} @references);
     $mira_settings .= " --hgdir $hypergraph_dir ";

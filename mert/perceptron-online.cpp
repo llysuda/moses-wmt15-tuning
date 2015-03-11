@@ -170,6 +170,7 @@ int main(int argc, char** argv)
   bool readRef = false;
   bool readHyp = false;
   bool noavg = false;
+  int batch = 1;
 
   // Command-line processing follows pro.cpp
   po::options_description desc("Allowed options");
@@ -199,6 +200,7 @@ int main(int argc, char** argv)
   ("mosesargs", po::value<string>(&mosesargs), "decoder args")
   ("read-ref", po::value(&readRef)->zero_tokens()->default_value(false), "read ref hypergraph into memory")
   ("noavg", po::value(&noavg)->zero_tokens()->default_value(false), "output averaged perceptron")
+  ("batch", po::value<int>(&batch), "batch parallel, batch size")
   ;
 
   po::options_description cmdline_options;
@@ -379,20 +381,41 @@ int main(int argc, char** argv)
     size_t sentenceIndex = 0;
     for(decoder->reset(); !decoder->finished(); decoder->next()) {
 
-      // decode a sentence
-      ioWrapper->ReadInput(staticData.GetInputType(),source);
-      source->SetTranslationId(lineCount);
-      // set up task of translating one sentence
-      TranslationTask* task = new TranslationTask(source, *ioWrapper);
+#ifdef WITH_THREADS
+      ThreadPool pool(staticData.ThreadCount());
+#endif
+
+      int b = 0;
+        // decode a sentence
+      while (ioWrapper->ReadInput(staticData.GetInputType(),source)) {
+        source->SetTranslationId(lineCount);
+        // set up task of translating one sentence
+        TranslationTask* task = new TranslationTask(source, *ioWrapper);
+
+#ifdef WITH_THREADS
+        pool.Submit(task);
+#else
       task->Run();
       delete task;
-      source = NULL;
-      ++lineCount;
+#endif
+
+        source = NULL;
+        ++lineCount;
+
+        b++;
+        if (b == batch) {
+          break;
+        }
+      }
+
+#ifdef WITH_THREADS
+      pool.Stop(true); //flush remaining jobs
+#endif
 
       //cerr << wv << endl;
       // compute violation
       PerceptronData hfd;
-      decoder->Perceptron(bg,wv,&hfd);
+      decoder->Perceptron(bg,wv,&hfd, b);
 
       // Update weights
       if (!hfd.hopeModelEqual && hfd.hopeBleu  > hfd.modelBleu) {
@@ -445,6 +468,11 @@ int main(int argc, char** argv)
       ++totalCount;
       if (streaming_out)
         cout << wv << endl;
+
+      // jump
+      for(int bi = 0; bi < b-1; bi++)
+        decoder->next();
+
     }
     // Training Epoch summary
     cerr << iNumUpdates << "/" << iNumExamples << " updates"
