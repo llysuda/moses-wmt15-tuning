@@ -305,7 +305,8 @@ void ChartManager::OutputSearchGraphMoses(std::ostream &outputSearchGraphStream)
 void ChartManager::OutputBest(OutputCollector *collector) const
 {
 
-  if (!StaticData::Instance().GetReachableSpanPair()) {
+  bool reachableSpan = StaticData::Instance().GetReachableSpanPair();
+  if (!reachableSpan) {
     const ChartHypothesis *bestHypo = GetBestHypothesis();
     if (collector) {
       const size_t translationId = m_source.GetTranslationId();
