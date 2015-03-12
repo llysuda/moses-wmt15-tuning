@@ -116,7 +116,7 @@ public:
 
 public:
 
-  static std::map<std::string, IndexPair> GetCoreNameIndexes() {
+  std::map<std::string, IndexPair> GetCoreNameIndexes() const {
     std::map<std::string, IndexPair> ret;
     ScoreIndexMap::const_iterator iter = s_scoreIndexes.begin();
     for(; iter != s_scoreIndexes.end(); ++iter) {
@@ -126,7 +126,7 @@ public:
     return ret;
   }
 
-  static std::map<std::string, bool> GetTunableMap() {
+  std::map<std::string, bool> GetTunableMap() const {
     std::map<std::string, bool> ret;
     ScoreIndexMap::const_iterator iter = s_scoreIndexes.begin();
     for(; iter != s_scoreIndexes.end(); ++iter) {
