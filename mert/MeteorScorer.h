@@ -54,6 +54,10 @@ public:
     return 23;
   }
 
+  virtual float getReferenceLength(const std::vector<ScoreStatsType>& totals) const {
+     return totals[1];
+  }
+
   virtual float calculateScore(const std::vector<ScoreStatsType>& comps) const;
 
 private:
