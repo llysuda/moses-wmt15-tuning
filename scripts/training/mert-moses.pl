@@ -166,6 +166,8 @@ my $___DEV_SYMAL = undef;
 my $dev_symal_abs = undef;
 my $working_dir_abs = undef;
 
+my $refdep = "";
+
 use Getopt::Long;
 GetOptions(
   "working-dir=s" => \$___WORKING_DIR,
@@ -220,7 +222,8 @@ GetOptions(
   "promix-training=s" => \$__PROMIX_TRAINING,
   "promix-table=s" => \@__PROMIX_TABLES,
   "threads=i" => \$__THREADS,
-  "spe-symal=s" => \$___DEV_SYMAL
+  "spe-symal=s" => \$___DEV_SYMAL,
+  "red-ref-dep=s" => \$refdep
 ) or exit(1);
 
 # the 4 required parameters can be supplied on the command line directly
@@ -321,6 +324,7 @@ Options:
   exit 1;
 }
 
+$refdep = ensure_full_path($refdep);
 
 # Check validity of input parameters and set defaults if needed
 
@@ -420,6 +424,10 @@ $scconfig =~ s/\s+$//;
 $scconfig =~ s/\s+/,/g;
 
 $scconfig = "--scconfig $scconfig" if ($scconfig);
+
+if ($sctype =~ /RED/ && !$scconfig =~ /stat:red/) {
+    $scconfig .= ",stat:red/red.nbest.stat" ;
+}
 
 my $mert_extract_args = "$sctype $scconfig";
 
@@ -819,8 +827,14 @@ while (1) {
     my $base_score_file   = "scores.dat";
     my $feature_file      = "run$run.${base_feature_file}";
     my $score_file        = "run$run.${base_score_file}";
-
-    my $cmd = "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
+    
+    my $cmd = "";
+    
+    if ($sctype =~ /RED/) {
+        $cmd = "bash ~/plateform/red/red.sh $nbest_file $___DEV_E $refdep\n";
+    }
+    
+    $cmd .= "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
 
   if (! $___HG_MIRA) {
     $cmd .= " -d" if $__PROMIX_TRAINING; # Allow duplicates

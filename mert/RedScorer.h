@@ -46,29 +46,22 @@ public:
   virtual void prepareStats(std::size_t sid, const std::string& text, ScoreStats& entry);
 
   virtual std::size_t NumberOfScores() const {
-    // From edu.cmu.meteor.scorer.MeteorStats
-    // tstLen refLen tstFuncWords refFuncWords stage1tstMatchesContent
-    // stage1refMatchesContent stage1tstMatchesFunction stage1refMatchesFunction
-    // s2tc s2rc s2tf s2rf s3tc s3rc s3tf s3rf s4tc s4rc s4tf s4rf chunks
-    // tstwordMatches refWordMatches
-    return 23;
+    // reflen count totalScore
+    return 3;
+  }
+
+  virtual float getReferenceLength(const std::vector<ScoreStatsType>& totals) const {
+     return totals[0];
   }
 
   virtual float calculateScore(const std::vector<ScoreStatsType>& comps) const;
 
 private:
   // Meteor and process IO
-  std::string meteor_jar;
-  std::string meteor_lang;
-  std::string meteor_task;
-  std::string meteor_m;
-  std::string meteor_p;
-  std::string meteor_w;
-  ofdstream* m_to_meteor;
-  ifdstream* m_from_meteor;
-#ifdef WITH_THREADS
-  mutable boost::mutex mtx;
-#endif // WITH_THREADS
+  std::string stat_file;
+  std::vector<std::vector<std::string> > m_stats;
+  int m_currIndex;
+  int m_prevSid;
 
   // data extracted from reference files
   std::vector<std::string> m_references;

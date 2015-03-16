@@ -12,88 +12,64 @@
 
 #include <boost/thread/mutex.hpp>
 
-#if defined(__GLIBCXX__) || defined(__GLIBCPP__)
-#include "Fdstream.h"
-#endif
-
 #include "ScoreStats.h"
 #include "Util.h"
+
+#include "util/file_piece.hh"
+#include "util/tokenize_piece.hh"
+#include "util/string_piece.hh"
+#include "FeatureDataIterator.h"
 
 using namespace std;
 
 namespace MosesTuning
 {
 
-// Meteor supported
-#if defined(__GLIBCXX__) || defined(__GLIBCPP__)
-
-// for clarity
-#define CHILD_STDIN_READ pipefds_input[0]
-#define CHILD_STDIN_WRITE pipefds_input[1]
-#define CHILD_STDOUT_READ pipefds_output[0]
-#define CHILD_STDOUT_WRITE pipefds_output[1]
-
 RedScorer::RedScorer(const string& config)
   : StatisticsBasedScorer("RED",config)
 {
-  meteor_jar = getConfig("jar", "");
-  meteor_lang = getConfig("lang", "en");
-  meteor_task = getConfig("task", "tune");
-  meteor_m = getConfig("m", "");
-  meteor_p = getConfig("p", "");
-  meteor_w = getConfig("w", "");
-  if (meteor_jar == "") {
-    throw runtime_error("Meteor jar required, see RedScorer.h for full list of options: --scconfig jar:/path/to/meteor-1.4.jar");
+  m_currIndex = 0;
+  m_prevSid = 0;
+
+  stat_file = getConfig("stat", "");
+  if (stat_file == "") {
+    throw runtime_error("stat file is required: --scconfig stat:stat_file");
   }
-  int pipe_status;
-  int pipefds_input[2];
-  int pipefds_output[2];
-  // Create pipes for process communication
-  pipe_status = pipe(pipefds_input);
-  if (pipe_status == -1) {
-    throw runtime_error("Error creating pipe");
-  }
-  pipe_status = pipe(pipefds_output);
-  if (pipe_status == -1) {
-    throw runtime_error("Error creating pipe");
-  }
-  // Fork
-  pid_t pid;
-  pid = fork();
-  if (pid == pid_t(0)) {
-    // Child's IO
-    dup2(CHILD_STDIN_READ, 0);
-    dup2(CHILD_STDOUT_WRITE, 1);
-    close(CHILD_STDIN_WRITE);
-    close(CHILD_STDOUT_READ);
-    // Call Meteor
-    stringstream meteor_cmd;
-    meteor_cmd << "java -Xmx1G -jar " << meteor_jar << " - - -stdio -lower -t " << meteor_task << " -l " << meteor_lang;
-    if (meteor_m != "") {
-      meteor_cmd << " -m '" << meteor_m << "'";
+
+  TRACE_ERR("loading nbest stats from " << stat_file << endl);
+  util::FilePiece in(stat_file.c_str());
+
+  string sentence;
+  int sentence_index;
+  int prev_index = -1;
+
+  while (true) {
+    try {
+      StringPiece line = in.ReadLine();
+      if (line.empty()) continue;
+
+      util::TokenIter<util::MultiCharacter> it(line, util::MultiCharacter("|||"));
+
+      sentence_index = ParseInt(*it);
+      ++it;
+      sentence = it->as_string();
+
+      if (sentence_index != prev_index) {
+        m_stats.push_back(vector<string>());
+      }
+
+      m_stats[sentence_index].push_back(sentence);
+
+    } catch (util::EndOfFileException &e) {
+      PrintUserTime("Loaded N-best stats");
+      break;
     }
-    if (meteor_p != "") {
-      meteor_cmd << " -p '" << meteor_p << "'";
-    }
-    if (meteor_w != "") {
-      meteor_cmd << " -w '" << meteor_w << "'";
-    }
-    TRACE_ERR("Executing: " + meteor_cmd.str() + "\n");
-    execl("/bin/bash", "bash", "-c", meteor_cmd.str().c_str(), (char*)NULL);
-    throw runtime_error("Continued after execl");
   }
-  // Parent's IO
-  close(CHILD_STDIN_READ);
-  close(CHILD_STDOUT_WRITE);
-  m_to_meteor = new ofdstream(CHILD_STDIN_WRITE);
-  m_from_meteor = new ifdstream(CHILD_STDOUT_READ);
 }
 
 RedScorer::~RedScorer()
 {
   // Cleanup IO
-  delete m_to_meteor;
-  delete m_from_meteor;
 }
 
 void RedScorer::setReferenceFiles(const vector<string>& referenceFiles)
@@ -117,79 +93,24 @@ void RedScorer::setReferenceFiles(const vector<string>& referenceFiles)
 
 void RedScorer::prepareStats(size_t sid, const string& text, ScoreStats& entry)
 {
-  string sentence = this->preprocessSentence(text);
-  string stats_str;
-  stringstream input;
-  // SCORE ||| ref1 ||| ref2 ||| ... ||| text
-  input << "SCORE";
-  for (int incRefs = 0; incRefs < (int)m_multi_references.size(); incRefs++) {
-    if (sid >= m_multi_references.at(incRefs).size()) {
-      stringstream msg;
-      msg << "Sentence id (" << sid << ") not found in reference set";
-      throw runtime_error(msg.str());
-    }
-    string ref = m_multi_references.at(incRefs).at(sid);
-    input << " ||| " << ref;
+  if (sid != m_prevSid) {
+    m_currIndex = 0;
   }
-  input << " ||| " << text << "\n";
-  // Threadsafe IO
-#ifdef WITH_THREADS
-  mtx.lock();
-#endif
-  //TRACE_ERR ( "in: " + input.str() );
-  *m_to_meteor << input.str();
-  m_from_meteor->getline(stats_str);
-  //TRACE_ERR ( "out: " + stats_str + "\n" );
-#ifdef WITH_THREADS
-  mtx.unlock();
-#endif
+
+  string sentence = this->preprocessSentence(text);
+  string stats_str = m_stats[sid][m_currIndex];
   entry.set(stats_str);
+  m_currIndex++;
 }
 
 float RedScorer::calculateScore(const vector<ScoreStatsType>& comps) const
 {
-  string score;
-  stringstream input;
-  // EVAL ||| stats
-  input << "EVAL |||";
-  copy(comps.begin(), comps.end(), ostream_iterator<int>(input, " "));
-  input << "\n";
-  // Threadsafe IO
-#ifdef WITH_THREADS
-  mtx.lock();
-#endif
-  //TRACE_ERR ( "in: " + input.str() );
-  *m_to_meteor << input.str();
-  m_from_meteor->getline(score);
-  //TRACE_ERR ( "out: " + score + "\n" );
-#ifdef WITH_THREADS
-  mtx.unlock();
-#endif
-  return atof(score.c_str());
+  if (comps.size() != NumberOfScores()) {
+    throw runtime_error("RED stats num mis-match !");
+  }
+  ScoreStatsType score = comps[2]/comps[1];
+  return score;
 }
 
-#else
-
-// Meteor unsupported, throw error if used
-
-RedScorer::RedScorer(const string& config)
-  : StatisticsBasedScorer("METEOR",config)
-{
-  throw runtime_error("Meteor unsupported, requires GLIBCXX");
-}
-
-RedScorer::~RedScorer() {}
-
-void RedScorer::setReferenceFiles(const vector<string>& referenceFiles) {}
-
-void RedScorer::prepareStats(size_t sid, const string& text, ScoreStats& entry) {}
-
-float RedScorer::calculateScore(const vector<ScoreStatsType>& comps) const
-{
-  // Should never be reached
-  return 0.0;
-}
-
-#endif
 
 }
