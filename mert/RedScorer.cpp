@@ -53,9 +53,11 @@ RedScorer::RedScorer(const string& config)
       sentence_index = ParseInt(*it);
       ++it;
       sentence = it->as_string();
+      ++it;
 
       if (sentence_index != prev_index) {
         m_stats.push_back(vector<string>());
+        prev_index = sentence_index;
       }
 
       m_stats[sentence_index].push_back(sentence);

@@ -112,7 +112,7 @@ inline std::string stringify(T x)
 
 inline ScoreStatsType ConvertCharToScoreStatsType(const char *str)
 {
-  return std::atoi(str);
+  return std::atof(str);
 }
 
 inline ScoreStatsType ConvertStringToScoreStatsType(const std::string& str)
