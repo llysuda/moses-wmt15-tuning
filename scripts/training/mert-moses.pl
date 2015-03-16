@@ -425,7 +425,7 @@ $scconfig =~ s/\s+/,/g;
 
 $scconfig = "--scconfig $scconfig" if ($scconfig);
 
-if ($sctype =~ /RED/ && !$scconfig =~ /stat:red/) {
+if ($sctype =~ /RED/) {
     $scconfig .= ",stat:red/red.nbest.stat" ;
 }
 
