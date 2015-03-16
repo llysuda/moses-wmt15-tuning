@@ -99,6 +99,7 @@ void RedScorer::prepareStats(size_t sid, const string& text, ScoreStats& entry)
 {
   if (sid != m_prevSid) {
     m_currIndex = 0;
+    m_prevSid = sid;
   }
 
   string sentence = this->preprocessSentence(text);
