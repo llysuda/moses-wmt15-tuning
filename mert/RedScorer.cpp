@@ -33,7 +33,9 @@ RedScorer::RedScorer(const string& config)
 
   stat_file = getConfig("stat", "");
   if (stat_file == "") {
-    throw runtime_error("stat file is required: --scconfig stat:stat_file");
+    //throw runtime_error("stat file is required: --scconfig stat:stat_file");
+    cerr << "no stat file specified" << endl;
+    return;
   }
 
   TRACE_ERR("loading nbest stats from " << stat_file << endl);
