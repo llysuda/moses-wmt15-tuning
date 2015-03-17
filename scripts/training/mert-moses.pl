@@ -831,7 +831,11 @@ while (1) {
     my $cmd = "";
     
     if ($sctype =~ /RED/) {
-        $cmd = "bash ~/plateform/red/red.sh $nbest_file $___DEV_E $refdep\n";
+        my $num_threads = 1;
+        if($__THREADS) {
+            $num_threads = $__THREADS;
+        }
+        $cmd = "bash ~/plateform/red/red-parallel.sh $nbest_file $___DEV_E $refdep $num_threads\n";
     }
     
     $cmd .= "$mert_extract_cmd $mert_extract_args --scfile $score_file --ffile $feature_file -r " . join(",", @references) . " -n $nbest_file";
